@@ -75,6 +75,7 @@
     "testEnvironment": "jsdom"
   },
   "dependencies": {
-    "mintbase": "^0.7.0"
+    "mintbase": "^0.7.0",
+    "near-api-js": "^0.45.1"
   }
 }
