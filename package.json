@@ -1,6 +1,6 @@
 {
-  "name": "near-lib",
-  "version": "1.0.0",
+  "name": "@explorins/near-lib",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "module": "lib/index.esm.js",
