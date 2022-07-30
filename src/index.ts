@@ -1,7 +1,7 @@
-export function sum(a: number, b: number): number {
-    return a + b
-}
+import { API } from './api'
+import { Wallet } from './wallet'
 
-export function deduct(a: number, b: number): number {
-    return a - b
+export {
+  API,
+  Wallet
 }
