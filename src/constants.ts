@@ -1,5 +1,27 @@
 import BN from 'bn.js'
-import { MetadataField } from './types'
+import { MetadataField, NEARConfig } from './types'
+
+export const TESTNET_CONFIG = {
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+  walletUrl: "https://wallet.testnet.near.org",
+  helperUrl: "https://helper.testnet.near.org",
+  explorerUrl: "https://explorer.testnet.near.org",
+  headers: {
+    "Content-Type": "application/json",
+  },
+};
+
+export const MAINNET_CONFIG = {
+  networkId: "mainnet",
+  nodeUrl: "https://rpc.mainnet.near.org",
+  walletUrl: "https://wallet.mainnet.near.org",
+  helperUrl: "https://helper.mainnet.near.org",
+  explorerUrl: "https://explorer.mainnet.near.org",
+  headers: {
+    "Content-Type": "application/json",
+  },
+};
 
 export const CLOUD_URI = process.env.MINTBASEJS_CLOUD_URI
 export const API_VERSION = process.env.MINTBASEJS_API_VERSION || '1'
@@ -16,10 +38,11 @@ export const DEFAULT_APP_NAME = 'Mintbase.js'
 export const NEAR_LOCAL_STORAGE_KEY_SUFFIX = '_wallet_auth_key'
 
 // TODO: pull this from somewhere else?
-export const FACTORY_CONTRACT_NAME =
-  process.env.MINTBASEJS_FACTORY_CONTRACT_NAME || 'mintspace1.testnet'
+export const FACTORY_CONTRACT_NAME = 'mintspace1.testnet'
 
-export const STORE_CONTRACT_VIEW_METHODS = []
+export const STORE_CONTRACT_VIEW_METHODS = [
+  'list_minters'
+]
 
 export const STORE_CONTRACT_CALL_METHODS = [
   'nft_batch_mint',
@@ -40,7 +63,9 @@ export const STORE_CONTRACT_CALL_METHODS = [
   'batch_change_minters'
 ]
 
-export const MARKET_CONTRACT_VIEW_METHODS = []
+export const MARKET_CONTRACT_VIEW_METHODS = [
+  
+]
 
 export const MARKET_CONTRACT_CALL_METHODS = [
   'make_offer',

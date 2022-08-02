@@ -2,7 +2,7 @@
   "name": "@explorins/near-lib",
   "version": "0.0.1",
   "description": "Explorins lib to interact with mintbase & near",
-  "main": "index.js",
+  "main": "lib/index.js",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
@@ -10,6 +10,7 @@
   "module": "lib/index.esm.js",
   "scripts": {
     "build": "tsc && npm run build:js",
+    "watch": "tsc -w && npm run build:js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --exec npm run build",
     "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline"

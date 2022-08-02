@@ -1,7 +1,7 @@
 import { API } from './api'
-import { WalletConnection } from './wallet'
+import { NearWallet } from './wallet'
 
 export {
   API,
-  WalletConnection
+  NearWallet
 }

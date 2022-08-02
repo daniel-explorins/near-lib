@@ -10,9 +10,8 @@ enum Network {
 }
 
 interface NEARConfig {
-  networkId: string
+  networkId: string,
   nodeUrl: string
-  contractName: string
   walletUrl: string
   helperUrl: string
 }
