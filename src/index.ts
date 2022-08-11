@@ -1,7 +1,7 @@
 import { API } from './api'
-import { NearWallet } from './wallet'
+import { MintbaseNearWallet } from './mintbase-near-wallet'
 
 export {
   API,
-  NearWallet
+  MintbaseNearWallet
 }
