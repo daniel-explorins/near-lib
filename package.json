@@ -76,6 +76,7 @@
     "testEnvironment": "jsdom"
   },
   "dependencies": {
+    "bn.js": "^5.2.1",
     "mintbase": "^0.7.0",
     "near-api-js": "^0.45.1",
     "retry": "^0.13.1"

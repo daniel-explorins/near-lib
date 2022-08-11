@@ -20,7 +20,7 @@ import {
 } from 'near-api-js';
 
 import {
-  NEARConfig,
+  NEARConfig, OptionalMethodArgs,
 } from './types'
 
 import { 
@@ -28,7 +28,9 @@ import {
   MAINNET_CONFIG, 
   STORE_CONTRACT_VIEW_METHODS, 
   STORE_CONTRACT_CALL_METHODS, 
-  TESTNET_CONFIG 
+  TESTNET_CONFIG, 
+  MAX_GAS,
+  ONE_YOCTO
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 
@@ -72,9 +74,9 @@ export class MintbaseNearWallet {
     this.mintbaseWallet = new MintbaseWallet();
 
     this.mintbaseWalletConfig = {
-      networkName: this.networkName,
-      chain: this.chain,
-      apiKey: this.apiKey,
+      networkName: networkName,
+      chain: chain,
+      apiKey: apiKey,
     };
   }
 
@@ -83,18 +85,17 @@ export class MintbaseNearWallet {
    */
   public async mintbaseLogin(): Promise<void> 
   {
-    console.log('mintbase Login enter ...');
+    console.log('mintbase Login enter pruebas ...');
     
-    try {
-      await this.mintbaseWallet.init(this.mintbaseWalletConfig);
-    } catch (error) {
-      throw new Error('Error initializing mintbase');
-    }
+    
+    const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
+    const { wallet, isConnected } = walletData;
 
-    if (!this.mintbaseWallet.isConnected) {
+    if (!isConnected) {
       // If the wallet is not connected, we go to the connection page
       await this.mintbaseWallet.connect({ requestSignIn: true });
     }
+
     const {data: details} = await this.mintbaseWallet.details();
 
     this.contractName = details.contractName;
@@ -113,6 +114,56 @@ export class MintbaseNearWallet {
     }
   }
 
+  public disconnect() {
+    this.mintbaseWallet.activeWallet?.signOut()
+    this.mintbaseWallet.activeNearConnection = undefined
+    this.mintbaseWallet.activeAccount = undefined
+  }
+
+  /**
+   * Transfer one token.
+   * @param {string} tokenId The token id to transfer.
+   * @param {string} receiverId The account id to transfer to.
+   * @param {string} contractName The contract name to transfer tokens from.
+   */
+  public async simpleTransfer(
+    tokenId: string,
+    receiverId: string,
+    contractName: string,
+    gas = MAX_GAS
+  ): Promise<any> {
+
+    const account = this.mintbaseWallet.activeWallet?.account()
+    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+
+    if (!account || !accountId) {
+      throw new Error('Account is undefined.' );
+    }
+      
+    if (!contractName){
+      throw new Error('No contract name was provided.' )
+    }
+
+    const contract = new Contract(account, contractName, {
+      viewMethods:
+        this.mintbaseWallet.constants.STORE_CONTRACT_VIEW_METHODS ||
+        STORE_CONTRACT_VIEW_METHODS,
+      changeMethods:
+        this.mintbaseWallet.constants.STORE_CONTRACT_CALL_METHODS ||
+        STORE_CONTRACT_CALL_METHODS,
+    })
+
+    // @ts-ignore: method does not exist on Contract type
+    await contract.nft_transfer({
+      args: { receiver_id: receiverId, token_id: tokenId },
+      gas: gas,
+      amount: ONE_YOCTO,
+    });
+  }
+
+  /**
+   * Este método "list_minters" está en la documentación de mintbase, pero no existe ??
+   */
   public async getMinters() {
     
     const contract = new Contract(this.account, this.contractName, {
@@ -122,7 +173,6 @@ export class MintbaseNearWallet {
 
     // @ts-ignore: method does not exist on Contract type
     const minters = await contract.list_minters();
-    console.log('minters: ', minters);
   }
 
   /**
