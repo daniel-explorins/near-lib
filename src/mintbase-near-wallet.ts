@@ -80,12 +80,17 @@ export class MintbaseNearWallet {
     };
   }
 
+  public async getDetails() {
+    const {data: details} = await this.mintbaseWallet.details();
+    return details;
+  }
+
   /**
    * We use the mintbase object to make the connection so we can use its methods and properties
    */
   public async mintbaseLogin(): Promise<void> 
   {
-    console.log('mintbase Login enter pruebas ...');
+    console.log('mintbase Login enter pruebas ...', this.mintbaseWalletConfig);
     
     
     const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
@@ -126,15 +131,14 @@ export class MintbaseNearWallet {
    * @param {string} receiverId The account id to transfer to.
    * @param {string} contractName The contract name to transfer tokens from.
    */
-  public async simpleTransfer(
+  public async transferToken(
     tokenId: string,
-    receiverId: string,
-    contractName: string,
     gas = MAX_GAS
   ): Promise<any> {
 
     const account = this.mintbaseWallet.activeWallet?.account()
-    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+    const accountId = this.mintbaseWallet.activeWallet?.account().accountId;
+    const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
 
     if (!account || !accountId) {
       throw new Error('Account is undefined.' );
@@ -155,7 +159,7 @@ export class MintbaseNearWallet {
 
     // @ts-ignore: method does not exist on Contract type
     await contract.nft_transfer({
-      args: { receiver_id: receiverId, token_id: tokenId },
+      args: { receiver_id: accountId, token_id: tokenId },
       gas: gas,
       amount: ONE_YOCTO,
     });
@@ -166,10 +170,26 @@ export class MintbaseNearWallet {
    */
   public async getMinters() {
     
-    const contract = new Contract(this.account, this.contractName, {
-      viewMethods: STORE_CONTRACT_VIEW_METHODS,
-      changeMethods: STORE_CONTRACT_CALL_METHODS,
-    });
+    const account = this.mintbaseWallet.activeWallet?.account()
+    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+    const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName
+
+    if (!account || !accountId) {
+      throw new Error('Account is undefined.' );
+    }
+      
+    if (!contractName){
+      throw new Error('No contract name was provided.' )
+    }
+
+    const contract = new Contract(account, contractName, {
+      viewMethods:
+        this.mintbaseWallet.constants.STORE_CONTRACT_VIEW_METHODS ||
+        STORE_CONTRACT_VIEW_METHODS,
+      changeMethods:
+        this.mintbaseWallet.constants.STORE_CONTRACT_CALL_METHODS ||
+        STORE_CONTRACT_CALL_METHODS,
+    })
 
     // @ts-ignore: method does not exist on Contract type
     const minters = await contract.list_minters();
@@ -198,5 +218,20 @@ export class MintbaseNearWallet {
         keyStore: new keyStores.BrowserLocalStorageKeyStore(),
       }
     )
+  }
+
+  /**
+   * Fetch marketplace and each token's metadata (w/ cursor offset pagination enabled).
+   * @param limit number of results
+   * @param offset number of records to skip
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async fetchMarketplace(
+    offset?: number,
+    limit?: number
+  ) {
+    const response = await this.mintbaseWallet.api?.fetchMarketplace(offset, limit);
+    if(response) return response.data;
+    else throw new Error('Marketplace cannot be accessed.')
   }
 }
