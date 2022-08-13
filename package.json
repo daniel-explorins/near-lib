@@ -77,8 +77,10 @@
   },
   "dependencies": {
     "bn.js": "^5.2.1",
+    "graphql-request": "^4.3.0",
     "mintbase": "^0.7.0",
     "near-api-js": "^0.45.1",
-    "retry": "^0.13.1"
+    "retry": "^0.13.1",
+    "rxjs": "^7.5.6"
   }
 }

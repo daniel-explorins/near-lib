@@ -1,5 +1,6 @@
 
 import { API } from './api';
+import { request, gql } from 'graphql-request'
 
 import { 
   Wallet as MintbaseWallet,
@@ -30,7 +31,10 @@ import {
   STORE_CONTRACT_CALL_METHODS, 
   TESTNET_CONFIG, 
   MAX_GAS,
-  ONE_YOCTO
+  ONE_YOCTO,
+  TWENTY_FOUR,
+  MARKET_CONTRACT_VIEW_METHODS,
+  MARKET_CONTRACT_CALL_METHODS
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 
@@ -116,6 +120,7 @@ export class MintbaseNearWallet {
       console.log('contractName: ', this.contractName)
       console.log('Account: ', this.account)
       console.log('El contract: ', contract);
+      console.log('El wallet: ', this.mintbaseWallet);
     }
   }
 
@@ -140,6 +145,9 @@ export class MintbaseNearWallet {
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId;
     const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
 
+    console.log('contractName: ', contractName);
+    console.log('account: ', account)
+
     if (!account || !accountId) {
       throw new Error('Account is undefined.' );
     }
@@ -157,12 +165,62 @@ export class MintbaseNearWallet {
         STORE_CONTRACT_CALL_METHODS,
     })
 
+    console.log('Contract para comprar: ', contract)
+
     // @ts-ignore: method does not exist on Contract type
     await contract.nft_transfer({
       args: { receiver_id: accountId, token_id: tokenId },
       gas: gas,
       amount: ONE_YOCTO,
     });
+    
+  }
+
+  public async makeOffer(
+    tokenId: string,
+    price: string ,
+    options?: OptionalMethodArgs & {
+      marketAddress?: string
+      timeout?: number
+    }
+  ): Promise<any> {
+    const account = this.mintbaseWallet.activeWallet?.account()
+    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+    const gas =  MAX_GAS;
+    const timeout = options?.timeout || TWENTY_FOUR
+
+    if (!account || !accountId) return 'Account is undefined.'
+    if (!tokenId) return  'Please provide a tokenId'
+
+    const contract = new Contract(
+      account,
+      options?.marketAddress ||
+        this.mintbaseWallet.constants.MARKET_ADDRESS ||
+        `0.${this.mintbaseWallet.constants.FACTORY_CONTRACT_NAME || FACTORY_CONTRACT_NAME}`,
+      {
+        viewMethods:
+          this.mintbaseWallet.constants.MARKET_CONTRACT_VIEW_METHODS ||
+          MARKET_CONTRACT_VIEW_METHODS,
+        changeMethods:
+          this.mintbaseWallet.constants.MARKET_CONTRACT_CALL_METHODS ||
+          MARKET_CONTRACT_CALL_METHODS,
+      }
+    )
+    
+    // @ts-ignore: method does not exist on Contract type
+    await contract.make_offer({
+      meta: options?.meta,
+      callbackUrl: options?.callbackUrl,
+      args: {
+        token_key: [tokenId], //  ["0:amber_v2.tenk.testnet"],
+        price: [price], // 1000000000000000000000000
+        timeout: [{ Hours: timeout }],
+      },
+      gas,
+      amount: price,
+    })
+
+    return true;
   }
 
   /**
@@ -173,6 +231,8 @@ export class MintbaseNearWallet {
     const account = this.mintbaseWallet.activeWallet?.account()
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId
     const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName
+
+    
 
     if (!account || !accountId) {
       throw new Error('Account is undefined.' );
@@ -221,7 +281,6 @@ export class MintbaseNearWallet {
   }
 
   /**
-   * Fetch marketplace and each token's metadata (w/ cursor offset pagination enabled).
    * @param limit number of results
    * @param offset number of records to skip
    */
@@ -233,5 +292,68 @@ export class MintbaseNearWallet {
     const response = await this.mintbaseWallet.api?.fetchMarketplace(offset, limit);
     if(response) return response.data;
     else throw new Error('Marketplace cannot be accessed.')
+  }
+
+  /**
+   * @param limit number of results
+   * @param offset number of records to skip
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async fetchStores(
+    offset?: number,
+    limit?: number
+  ) {
+    const response = await this.mintbaseWallet.api?.fetchStores(offset, limit);
+    if(response) return response.data.store;
+    else throw new Error('Marketplace cannot be accessed.')
+  }
+
+  
+  public async getMyStore( ) {
+    // TODO: my store puede variar
+    const query = gql`
+    {
+      store(where: {owner: {_eq: "explorins.testnet"}}) {
+        id
+      }
+    }
+  `;
+
+    const response = await this.mintbaseWallet.api?.custom(
+      query
+    ) as any;
+    if(response) return response.data?.store;
+    else throw new Error('My store cannot be accessed.')
+  }
+
+  public async getTokensOfStoreId(
+    storeId: string
+  ) {
+    const query = gql`
+    {
+      nft_tokens(where: {nft_contract_id: {_eq: "${storeId}"}}) {
+        metadata_id
+        token_id
+        nft_listings {
+          price
+        }
+    }
+  }
+  `;
+  const response = await this.mintbaseWallet.api?.custom(
+    query
+  ) as any;
+  console.log('getTokensOfStoreId lib: ', response);
+  if(response) return response.data?.nft_tokens;
+  else throw new Error('Tokens cannot be accessed.')
+  }
+
+  
+  public async fetchStoreById(
+    storeId: string
+  ) {
+    const response = await this.mintbaseWallet.api?.fetchStoreById(storeId);
+    if(response) return response.data;
+    else throw new Error('Store cannot be accessed.')
   }
 }
