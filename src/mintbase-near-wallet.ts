@@ -10,14 +10,9 @@ import {
 
 import {
   keyStores,
-  WalletAccount,
-  KeyPair,
-  Near,
-  Account,
-  utils,
-  WalletConnection,
   connect,
-  Contract
+  Contract,
+  ConnectedWalletAccount
 } from 'near-api-js';
 
 import {
@@ -37,19 +32,24 @@ import {
   MARKET_CONTRACT_CALL_METHODS
 } from './constants';
 import { WalletConfig } from './mintbase-types';
+import { MintbaseGraphql } from './mintbase-graphql';
 
-
+/**
+ * Object that contains the methods and variables necessary to interact with the near wallet
+ */
 export class MintbaseNearWallet {
 
   private networkConfig: any;
 
-  // Name that give us access to contract
-  public contractName: any;
+  public mintbaseGraphql: MintbaseGraphql|undefined;
 
-  // User account
-  public account: any;
+  /** Name that give us access to contract */ 
+  public contractName: string|undefined;
 
-// mintbaseWallet is the object that contains all mintbase methods and parameters
+  /** Account key for connected user (you) */ 
+  public account: ConnectedWalletAccount|undefined;
+
+  /** mintbaseWallet is the object that contains all mintbase methods and parameters */
   private mintbaseWallet: MintbaseWallet;
   private mintbaseWalletConfig: WalletConfig;
   
@@ -109,6 +109,8 @@ export class MintbaseNearWallet {
 
     this.contractName = details.contractName;
     this.account = this.mintbaseWallet.activeWallet?.account();
+    this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
+
     
     if (this.account) {
       const contract = new Contract(this.account, this.contractName, {
@@ -116,9 +118,9 @@ export class MintbaseNearWallet {
         changeMethods: STORE_CONTRACT_CALL_METHODS,
       });
 
-      console.log('Details: ', details)
-      console.log('contractName: ', this.contractName)
-      console.log('Account: ', this.account)
+      console.log('Details: ', details);
+      console.log('contractName: ', this.contractName);
+      console.log('Account: ', this.account);
       console.log('El contract: ', contract);
       console.log('El wallet: ', this.mintbaseWallet);
     }
@@ -145,8 +147,8 @@ export class MintbaseNearWallet {
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId;
     const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
 
-    console.log('contractName: ', contractName);
-    console.log('account: ', account)
+//console.log('contractName: ', contractName);
+//console.log('account: ', account)
 
     if (!account || !accountId) {
       throw new Error('Account is undefined.' );
@@ -173,12 +175,16 @@ export class MintbaseNearWallet {
       gas: gas,
       amount: ONE_YOCTO,
     });
-    
+  }
+
+  public async getMyThings(myStoreId: string) {
+    return await this.mintbaseGraphql?.getStoreThings(myStoreId)
   }
 
   public async makeOffer(
     tokenId: string,
     price: string ,
+    storeId?: string,
     options?: OptionalMethodArgs & {
       marketAddress?: string
       timeout?: number
@@ -190,7 +196,8 @@ export class MintbaseNearWallet {
     const timeout = options?.timeout || TWENTY_FOUR
 
     if (!account || !accountId) return 'Account is undefined.'
-    if (!tokenId) return  'Please provide a tokenId'
+    if (!tokenId) return  'Please provide a tokenId';
+    if(!storeId) return 'Must provide a storeId';
 
     const contract = new Contract(
       account,
@@ -212,7 +219,7 @@ export class MintbaseNearWallet {
       meta: options?.meta,
       callbackUrl: options?.callbackUrl,
       args: {
-        token_key: [tokenId], //  ["0:amber_v2.tenk.testnet"],
+        token_key: [tokenId+":"+storeId], //  ["0:amber_v2.tenk.testnet"],
         price: [price], // 1000000000000000000000000
         timeout: [{ Hours: timeout }],
       },
@@ -295,6 +302,7 @@ export class MintbaseNearWallet {
   }
 
   /**
+   * Devuelve todas las stores que se encuentran listadas en mintbase
    * @param limit number of results
    * @param offset number of records to skip
    */
@@ -308,44 +316,19 @@ export class MintbaseNearWallet {
     else throw new Error('Marketplace cannot be accessed.')
   }
 
-  
-  public async getMyStore( ) {
-    // TODO: my store puede variar
-    const query = gql`
-    {
-      store(where: {owner: {_eq: "explorins.testnet"}}) {
-        id
-      }
-    }
-  `;
-
-    const response = await this.mintbaseWallet.api?.custom(
-      query
-    ) as any;
-    if(response) return response.data?.store;
-    else throw new Error('My store cannot be accessed.')
+  /** Search and retrieve your near store in mintbase platform */
+  public async getMyStores( ) {
+    const myStores =  await this.mintbaseGraphql?.getStoreByOwner(this.account?.accountId);
+    return myStores;
   }
 
-  public async getTokensOfStoreId(
-    storeId: string
-  ) {
-    const query = gql`
-    {
-      nft_tokens(where: {nft_contract_id: {_eq: "${storeId}"}}) {
-        metadata_id
-        token_id
-        nft_listings {
-          price
-        }
-    }
-  }
-  `;
-  const response = await this.mintbaseWallet.api?.custom(
-    query
-  ) as any;
-  console.log('getTokensOfStoreId lib: ', response);
-  if(response) return response.data?.nft_tokens;
-  else throw new Error('Tokens cannot be accessed.')
+  /**
+   * 
+   * @param storeId 
+   * @returns 
+   */
+  public async getTokensOfStoreId( storeId: string ) {
+    return await this.mintbaseGraphql?.getTokensOfStoreId(storeId)
   }
 
   

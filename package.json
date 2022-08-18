@@ -13,7 +13,9 @@
     "watch": "tsc -w && npm run build:js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --exec npm run build",
-    "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline"
+    "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
+    "doc": "typedoc --out docs src && touch docs/.nojekyll",
+    "start:docs": "http-server ./docs"
   },
   "keywords": [
     "NFT",
@@ -81,6 +83,7 @@
     "mintbase": "^0.7.0",
     "near-api-js": "^0.45.1",
     "retry": "^0.13.1",
-    "rxjs": "^7.5.6"
+    "rxjs": "^7.5.6",
+    "urlcat": "^2.0.4"
   }
 }
