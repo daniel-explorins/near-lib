@@ -12,6 +12,43 @@ export class MintbaseGraphql {
   constructor(apiBaseUrl?: string) {
     this.apiBaseUrl = apiBaseUrl ?? API_BASE_NEAR_TESTNET;
   }
+
+  /**
+   * implementación en graphql de ex-ts-lib
+   * @param storeId 
+   * @param itemOffset 
+   * @param itemLimit 
+   * @returns {Observable}
+   */
+   public getStoreStream(
+    storeId: string, 
+    itemOffset: number = 0, 
+    itemLimit: number = 1000
+  ): Observable<any>
+  {
+    return from(this.getStoreById(storeId,itemOffset, itemLimit)).pipe(
+      tap(ev => console.log('getStoreStream response: ', ev))
+    );
+  }
+
+  /**
+   * implementación en graphql de ex-ts-lib
+   * @param thingId 
+   * @param itemOffset 
+   * @param itemLimit 
+   * @returns 
+   */
+  public getThingStream(
+    thingId: string, 
+    itemOffset: number = 0, 
+    itemLimit: number = 1000
+  ): Observable<any>
+  {
+    return from(this.getThingById(thingId)).pipe(
+      tap(ev => console.log('getThingStream method: ', ev))
+    );
+  }
+
     /**
    * Makes custom GraphQL query
    * @param query custom GraphQL query
@@ -32,34 +69,7 @@ export class MintbaseGraphql {
     }
   }
 
-  /**
-   * 
-   * @param storeId 
-   * @param itemOffset 
-   * @param itemLimit 
-   * @returns {Observable}
-   */
-  public getStoreStream(
-    storeId: string, 
-    itemOffset: number = 0, 
-    itemLimit: number = 1000
-  ): Observable<any>
-  {
-    return from(this.getStoreById(storeId)).pipe(
-      tap(ev => console.log('Nuevo metodo: ', ev))
-    );
-  }
-
-  public getThingStream(
-    thingId: string, 
-    itemOffset: number = 0, 
-    itemLimit: number = 1000
-  ): Observable<any>
-  {
-    return from(this.getThingById(thingId)).pipe(
-      tap(ev => console.log('Nuevo metodo thing: ', ev))
-    );
-  }
+  
 
   public async getStoreByOwner(owner: string|undefined) {
     if(!owner) throw new Error('Owner not provided.');
@@ -79,14 +89,24 @@ export class MintbaseGraphql {
   }
 
   /**
+   * implementación en graphql de ex-ts-lib
    * @link storeGeneralQuery
+   * @param storeId 
+   * @param itemOffset 
+   * @param itemLimit 
+   * @returns 
    */
-  public async getStoreById(storeId: string|undefined) {
+  public async getStoreById(
+    storeId: string|undefined,
+    itemOffset: number = 0,
+    itemLimit: number = 1000
+  ) {
     if(!storeId) throw new Error('Store Id not provided.');
 
     const query = gql`
     {
-      store(where: {id: {_eq: "${storeId}"}}) {
+      store(where:{id: {_eq: "${storeId}"}}) {
+        things(limit: ${itemLimit}, offset: ${itemOffset})
         ${storeGeneralQuery}
       }
     }
@@ -99,6 +119,7 @@ export class MintbaseGraphql {
   }
 
   /**
+   * implementación en graphql de ex-ts-lib
    * @link thingGeneralQuery
    */
    public async getThingById(thingId: string|undefined) {
@@ -118,10 +139,19 @@ export class MintbaseGraphql {
     else throw new Error('My store cannot be accessed.')
   }
 
-  public async getStoreItems(storeId: string) {
+  /**
+   * implementación en graphql de ex-ts-lib
+   * @param storeId 
+   * @returns 
+   */
+  public async getStoreItems(
+    storeId: string,
+    itemOffset: number = 0, 
+    itemLimit: number = 1000
+  ) {
     const query = gql`
     {
-      thing(where: {storeId: {_eq: "${storeId}"}}) {
+      thing(where: {storeId: {_eq: "${storeId}"}}, limit: ${itemLimit}, offset: ${itemOffset}) {
         ${thingGeneralQuery}
       }
     }
