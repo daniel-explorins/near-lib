@@ -5,13 +5,13 @@
   "main": "lib/index.js",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
-    "access": "public"
+    "access": "restricted"
   },
   "module": "lib/index.esm.js",
   "scripts": {
     "build": "tsc && npm run build:js",
     "watch": "tsc -w && npm run build:js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"No test specified\"",
     "dev": "nodemon --exec npm run build",
     "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
     "doc": "typedoc --out docs src && touch docs/.nojekyll",

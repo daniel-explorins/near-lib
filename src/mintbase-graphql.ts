@@ -1,5 +1,5 @@
 import { request, gql } from 'graphql-request'
-import { from, map, Observable, tap } from 'rxjs';
+import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
 import { API_BASE_NEAR_TESTNET } from './constants';
 import { storeGeneralQuery, thingGeneralQuery } from './utils/graphQuery';
@@ -144,27 +144,86 @@ export class MintbaseGraphql {
    * @param storeId 
    * @returns 
    */
-  public async getStoreItems(
-    storeId: string,
+   public async getItemsById(
+    thingIds: string[] | null = null, 
+    showListedOnly: boolean = true,
     itemOffset: number = 0, 
     itemLimit: number = 1000
   ) {
-    const query = gql`
-    {
-      thing(where: {storeId: {_eq: "${storeId}"}}, limit: ${itemLimit}, offset: ${itemOffset}) {
-        ${thingGeneralQuery}
-      }
+      const query = gql`
+        {
+          thing(
+            where: { 
+              tokens: {
+                list: {
+                  removedAt: {
+                    _is_null: ${showListedOnly}
+                  }
+                }
+              }, 
+              id: {
+                _in: ${thingIds}
+              }
+            }, 
+            limit: ${itemLimit}, 
+            offset: ${itemOffset}
+          )
+          {
+            ${thingGeneralQuery}
+          }
+        }
+      `;
+      const response = await this.custom(
+          query
+        ) as any;
+
+      console.log('getStoreItems response: ', response);
+      if(response) return response.thing;
+      else throw new Error('My store cannot be accessed.')
     }
-  `;
 
-  const response = await this.custom(
-      query
-    ) as any;
+  /**
+   * implementación en graphql de ex-ts-lib
+   * @param storeId 
+   * @returns 
+   */
+  public async getStoreItems(
+    storeId: string,
+    showListedOnly: boolean = true,
+    itemOffset: number = 0, 
+    itemLimit: number = 1000
+  ) {
+      const query = gql`
+        {
+          thing(
+            where: {
+              storeId: {
+                _eq: "${storeId}"
+              }, 
+              tokens: {
+                list: {
+                  removedAt: {
+                    _is_null: ${showListedOnly}
+                  }
+                }
+              },
+            }, 
+            limit: ${itemLimit}, 
+            offset: ${itemOffset}
+          )
+          {
+            ${thingGeneralQuery}
+          }
+        }
+      `;
+      const response = await this.custom(
+          query
+        ) as any;
 
-    console.log('getStoreItems response: ', response);
-    if(response) return response.thing;
-    else throw new Error('My store cannot be accessed.')
-  }
+      console.log('getStoreItems response: ', response);
+      if(response) return response.thing;
+      else throw new Error('My store cannot be accessed.')
+    }
 
   /**
    * 
