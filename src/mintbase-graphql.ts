@@ -3,6 +3,7 @@ import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
 import { API_BASE_NEAR_TESTNET } from './constants';
 import { storeGeneralQuery, thingGeneralQuery } from './utils/graphQuery';
+import { MintbaseThing } from '@explorins/types';
 
 export class MintbaseGraphql {
 
@@ -149,20 +150,20 @@ export class MintbaseGraphql {
     showListedOnly: boolean = true,
     itemOffset: number = 0, 
     itemLimit: number = 1000
-  ) {
+  ): Promise<MintbaseThing[]> {
       const query = gql`
         {
           thing(
-            where: { 
+            where: {
+              id: {
+                _in: "${thingIds}"
+              },
               tokens: {
                 list: {
                   removedAt: {
                     _is_null: ${showListedOnly}
                   }
                 }
-              }, 
-              id: {
-                _in: ${thingIds}
               }
             }, 
             limit: ${itemLimit}, 
@@ -192,7 +193,7 @@ export class MintbaseGraphql {
     showListedOnly: boolean = true,
     itemOffset: number = 0, 
     itemLimit: number = 1000
-  ) {
+  ): Promise<MintbaseThing[]> {
       const query = gql`
         {
           thing(
