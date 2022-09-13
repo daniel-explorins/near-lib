@@ -90,19 +90,13 @@ export class MintbaseNearWallet {
     return details;
   }
 
-  /**
-   * We use the mintbase object to make the connection so we can use its methods and properties
-   */
-  public async mintbaseLogin(): Promise<void> 
-  { 
-    const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
-    const { wallet, isConnected } = walletData;
+  public async connect() {
+    if(this.mintbaseWallet.isConnected()) return;
+    // If the wallet is not connected, we go to the connection page
+    await this.mintbaseWallet.connect({ requestSignIn: true });
+  }
 
-    if (!isConnected) {
-      // If the wallet is not connected, we go to the connection page
-      await this.mintbaseWallet.connect({ requestSignIn: true });
-    }
-
+  private async setInfo() {
     const {data: details} = await this.mintbaseWallet.details();
 
     this.contractName = details.contractName;
@@ -122,6 +116,20 @@ export class MintbaseNearWallet {
       console.log('El contract: ', contract);
       console.log('El wallet: ', this.mintbaseWallet);
     }
+  }
+
+  /**
+   * We use the mintbase object to make the connection so we can use its methods and properties
+   */
+  public async mintbaseLogin(): Promise<void> 
+  { 
+    const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
+    const { wallet, isConnected } = walletData;
+
+    if (!isConnected) {
+      throw new Error('Not connected');
+    }
+    await this.setInfo();
   }
 
   // Devuelve las things que pertenecen al usuario conectado
