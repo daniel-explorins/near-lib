@@ -94,10 +94,7 @@ export class MintbaseNearWallet {
    * We use the mintbase object to make the connection so we can use its methods and properties
    */
   public async mintbaseLogin(): Promise<void> 
-  {
-    console.log('mintbase Login enter pruebas ...', this.mintbaseWalletConfig);
-    
-    
+  { 
     const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
     const { wallet, isConnected } = walletData;
 
@@ -125,6 +122,12 @@ export class MintbaseNearWallet {
       console.log('El contract: ', contract);
       console.log('El wallet: ', this.mintbaseWallet);
     }
+  }
+
+  // Devuelve las things que pertenecen al usuario conectado
+  public async getTokenFromCurrentWallet() {
+    const {data: details} = await this.mintbaseWallet.details();
+    return await this.mintbaseGraphql?.getWalletThings(details.accountId)
   }
 
   public disconnect() {
