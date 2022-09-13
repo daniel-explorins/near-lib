@@ -290,7 +290,7 @@ export class MintbaseGraphql {
     if(!walletId) throw new Error('No wallet id')
     const query = gql`
     {
-      thing(where: {ownerId: {_eq: "${walletId}"}}) {
+      thing(where: {tokens: {ownerId: {_eq: "${walletId}"}}}) {
         ${thingGeneralQuery}
       }
     }
