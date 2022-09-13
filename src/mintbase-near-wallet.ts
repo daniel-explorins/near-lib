@@ -94,6 +94,7 @@ export class MintbaseNearWallet {
     if(this.mintbaseWallet.isConnected()) return;
     // If the wallet is not connected, we go to the connection page
     await this.mintbaseWallet.connect({ requestSignIn: true });
+    await this.setInfo();
   }
 
   private async setInfo() {

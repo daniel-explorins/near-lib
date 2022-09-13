@@ -300,8 +300,7 @@ export class MintbaseGraphql {
       query
     ) as any;
 
-    console.log('getStoreThings response: ', response);
-    if(response) return response.mb_views_store_things;
+    if(response) return response.thing;
     else throw new Error('My store cannot be accessed.')
   }
 }
