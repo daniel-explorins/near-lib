@@ -33,6 +33,7 @@ import {
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
+import { map, Observable, of } from 'rxjs';
 
 /**
  * Object that contains the methods and variables necessary to interact with the near wallet
@@ -113,13 +114,13 @@ export class MintbaseNearWallet {
 
     
     if (this.account) {
-      const contract = new Contract(this.account, this.contractName, {
+      const contract = new Contract(this.account, details.contractName, {
         viewMethods: STORE_CONTRACT_VIEW_METHODS,
         changeMethods: STORE_CONTRACT_CALL_METHODS,
       });
 
       console.log('Details: ', details);
-      console.log('contractName: ', this.contractName);
+      console.log('contractName: ', details.contractName);
       console.log('Account: ', this.account);
       console.log('El contract: ', contract);
       console.log('El wallet: ', this.mintbaseWallet);
@@ -130,6 +131,10 @@ export class MintbaseNearWallet {
     this.mintbaseWallet.activeWallet?.signOut()
     this.mintbaseWallet.activeNearConnection = undefined
     this.mintbaseWallet.activeAccount = undefined
+  }
+
+  public isLoggedIn(): Observable<boolean> {
+    return of(this.mintbaseWallet.isConnected());
   }
 
   /**
