@@ -151,6 +151,7 @@ export class MintbaseGraphql {
     itemOffset: number = 0, 
     itemLimit: number = 1000
   ): Promise<MintbaseThing[]> {
+
       const query = gql`
         {
           thing(
@@ -222,8 +223,9 @@ export class MintbaseGraphql {
         ) as any;
 
       console.log('getStoreItems response: ', response);
-      if(response) return response.thing;
-      else throw new Error('My store cannot be accessed.')
+      if(response) {
+        return response.thing;
+      } else throw new Error('My store cannot be accessed.')
     }
 
   /**
