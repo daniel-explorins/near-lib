@@ -33,6 +33,7 @@ import {
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
+import { map, Observable, of } from 'rxjs';
 
 /**
  * Object that contains the methods and variables necessary to interact with the near wallet
@@ -89,22 +90,14 @@ export class MintbaseNearWallet {
     return details;
   }
 
-  /**
-   * We use the mintbase object to make the connection so we can use its methods and properties
-   */
-  public async mintbaseLogin(): Promise<void> 
-  {
-    console.log('mintbase Login enter pruebas ...', this.mintbaseWalletConfig);
-    
-    
-    const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
-    const { wallet, isConnected } = walletData;
+  public async connect() {
+    if(this.mintbaseWallet.isConnected()) return;
+    // If the wallet is not connected, we go to the connection page
+    await this.mintbaseWallet.connect({ requestSignIn: true });
+    await this.setInfo();
+  }
 
-    if (!isConnected) {
-      // If the wallet is not connected, we go to the connection page
-      await this.mintbaseWallet.connect({ requestSignIn: true });
-    }
-
+  private async setInfo() {
     const {data: details} = await this.mintbaseWallet.details();
 
     this.contractName = details.contractName;
@@ -113,23 +106,47 @@ export class MintbaseNearWallet {
 
     
     if (this.account) {
-      const contract = new Contract(this.account, this.contractName, {
+      const contract = new Contract(this.account, details.contractName, {
         viewMethods: STORE_CONTRACT_VIEW_METHODS,
         changeMethods: STORE_CONTRACT_CALL_METHODS,
       });
 
       console.log('Details: ', details);
-      console.log('contractName: ', this.contractName);
+      console.log('contractName: ', details.contractName);
       console.log('Account: ', this.account);
       console.log('El contract: ', contract);
       console.log('El wallet: ', this.mintbaseWallet);
     }
   }
 
+  /**
+   * We use the mintbase object to make the connection so we can use its methods and properties
+   */
+  public async mintbaseLogin(): Promise<void> 
+  { 
+    const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
+    const { wallet, isConnected } = walletData;
+
+    if (!isConnected) {
+      throw new Error('Not connected');
+    }
+    await this.setInfo();
+  }
+
+  // Devuelve las things que pertenecen al usuario conectado
+  public async getTokenFromCurrentWallet() {
+    const {data: details} = await this.mintbaseWallet.details();
+    return await this.mintbaseGraphql?.getWalletThings(details.accountId)
+  }
+
   public disconnect() {
     this.mintbaseWallet.activeWallet?.signOut()
     this.mintbaseWallet.activeNearConnection = undefined
     this.mintbaseWallet.activeAccount = undefined
+  }
+
+  public isLoggedIn(): Observable<boolean> {
+    return of(this.mintbaseWallet.isConnected());
   }
 
   /**

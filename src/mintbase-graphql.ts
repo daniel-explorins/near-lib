@@ -3,6 +3,7 @@ import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
 import { API_BASE_NEAR_TESTNET } from './constants';
 import { storeGeneralQuery, thingGeneralQuery } from './utils/graphQuery';
+// Hay que probar de limpiar esta dependencia
 import { MintbaseThing } from '@explorins/types';
 
 export class MintbaseGraphql {
@@ -279,6 +280,29 @@ export class MintbaseGraphql {
 
     console.log('getStoreThings response: ', response);
     if(response) return response.mb_views_store_things;
+    else throw new Error('My store cannot be accessed.')
+  }
+
+  /**
+   * 
+   * @param storeId 
+   * @returns 
+   */
+  public async getWalletThings(walletId?: string) {
+    if(!walletId) throw new Error('No wallet id')
+    const query = gql`
+    {
+      thing(where: {tokens: {ownerId: {_eq: "${walletId}"}}}) {
+        ${thingGeneralQuery}
+      }
+    }
+  `;
+
+  const response = await this.custom(
+      query
+    ) as any;
+
+    if(response) return response.thing;
     else throw new Error('My store cannot be accessed.')
   }
 }
