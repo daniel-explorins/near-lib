@@ -34,6 +34,7 @@ import {
 import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
 import { map, Observable, of } from 'rxjs';
+import { MintbaseThing } from '@explorins/types';
 
 /**
  * Object that contains the methods and variables necessary to interact with the near wallet
@@ -134,7 +135,7 @@ export class MintbaseNearWallet {
   }
 
   // Devuelve las things que pertenecen al usuario conectado
-  public async getTokenFromCurrentWallet() {
+  public async getTokenFromCurrentWallet(): Promise<MintbaseThing[] | undefined> {
     const {data: details} = await this.mintbaseWallet.details();
     return await this.mintbaseGraphql?.getWalletThings(details.accountId)
   }

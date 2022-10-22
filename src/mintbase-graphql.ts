@@ -288,7 +288,7 @@ export class MintbaseGraphql {
    * @param storeId 
    * @returns 
    */
-  public async getWalletThings(walletId?: string) {
+  public async getWalletThings(walletId?: string): Promise<MintbaseThing[]> {
     if(!walletId) throw new Error('No wallet id')
     const query = gql`
     {
