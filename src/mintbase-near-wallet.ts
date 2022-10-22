@@ -1,7 +1,7 @@
 
-import { API } from './api';
+/* import { API } from './api';
 import { request, gql } from 'graphql-request'
-
+ */
 import { 
   Wallet as MintbaseWallet,
   Chain, 
