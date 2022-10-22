@@ -33,7 +33,7 @@ import {
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
-import { BehaviorSubject, map, Observable, of } from 'rxjs';
+import { BehaviorSubject, map, Observable, of, shareReplay } from 'rxjs';
 import { MintbaseThing } from '@explorins/types';
 
 /**
@@ -41,8 +41,8 @@ import { MintbaseThing } from '@explorins/types';
  */
 export class MintbaseNearWallet {
 
-  private isLogged = new BehaviorSubject(false);
-  public isLogged$ = this.isLogged.asObservable();
+  private _isLogged$ = new BehaviorSubject(false);
+  public isLogged$ = this._isLogged$.pipe(shareReplay(1))// asObservable();
 
   private networkConfig: any;
 
@@ -140,10 +140,10 @@ export class MintbaseNearWallet {
     const { wallet, isConnected } = walletData;
 
     if (!isConnected) {
-      this.isLogged.next(false);
+      this._isLogged$.next(false);
       throw new Error('Not connected');
     }
-    this.isLogged.next(true);
+    this._isLogged$.next(true);
     await this.setInfo();
   }
 
@@ -162,7 +162,7 @@ export class MintbaseNearWallet {
     this.mintbaseWallet.activeWallet?.signOut()
     this.mintbaseWallet.activeNearConnection = undefined
     this.mintbaseWallet.activeAccount = undefined;
-    this.isLogged.next(false);
+    this._isLogged$.next(false);
   }
 
   public isLoggedIn(): Observable<boolean> {
