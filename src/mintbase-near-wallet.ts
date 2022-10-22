@@ -5,7 +5,7 @@ import { request, gql } from 'graphql-request'
 import { 
   Wallet as MintbaseWallet,
   Chain, 
-  Network
+  Network,
 } from 'mintbase';
 
 import {
@@ -21,7 +21,6 @@ import {
 
 import { 
   FACTORY_CONTRACT_NAME, 
-  MAINNET_CONFIG, 
   STORE_CONTRACT_VIEW_METHODS, 
   STORE_CONTRACT_CALL_METHODS, 
   TESTNET_CONFIG, 
@@ -29,17 +28,21 @@ import {
   ONE_YOCTO,
   TWENTY_FOUR,
   MARKET_CONTRACT_VIEW_METHODS,
-  MARKET_CONTRACT_CALL_METHODS
+  MARKET_CONTRACT_CALL_METHODS,
+  MAINNET_CONFIG
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
-import { map, Observable, of } from 'rxjs';
+import { BehaviorSubject, map, Observable, of } from 'rxjs';
 import { MintbaseThing } from '@explorins/types';
 
 /**
  * Object that contains the methods and variables necessary to interact with the near wallet
  */
 export class MintbaseNearWallet {
+
+  private isLogged = new BehaviorSubject(false);
+  public isLogged$ = this.isLogged.asObservable();
 
   private networkConfig: any;
 
@@ -62,7 +65,7 @@ export class MintbaseNearWallet {
    */
   public constructor(
     private apiKey: string,
-    public networkName = Network.testnet,
+    public networkName: string,
     public chain = Chain.near
   ) {
     switch(networkName) {
@@ -92,31 +95,39 @@ export class MintbaseNearWallet {
   }
 
   public async connect() {
-    if(this.mintbaseWallet.isConnected()) return;
+    
+    if(this.mintbaseWallet.isConnected()) {
+      return
+    };
     // If the wallet is not connected, we go to the connection page
     await this.mintbaseWallet.connect({ requestSignIn: true });
-    await this.setInfo();
+
   }
 
   private async setInfo() {
-    const {data: details} = await this.mintbaseWallet.details();
+    try {
+      const {data: details} = await this.mintbaseWallet.details();
 
-    this.contractName = details.contractName;
-    this.account = this.mintbaseWallet.activeWallet?.account();
-    this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
-
-    
-    if (this.account) {
-      const contract = new Contract(this.account, details.contractName, {
-        viewMethods: STORE_CONTRACT_VIEW_METHODS,
-        changeMethods: STORE_CONTRACT_CALL_METHODS,
-      });
-
-      console.log('Details: ', details);
-      console.log('contractName: ', details.contractName);
-      console.log('Account: ', this.account);
-      console.log('El contract: ', contract);
-      console.log('El wallet: ', this.mintbaseWallet);
+      this.contractName = details.contractName;
+      this.account = this.mintbaseWallet.activeWallet?.account();
+      this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
+      if (this.account) {
+        const contract = new Contract(this.account, details.contractName, {
+          viewMethods: STORE_CONTRACT_VIEW_METHODS,
+          changeMethods: STORE_CONTRACT_CALL_METHODS,
+        });
+        console.log('----------------------------------------------------- NEAR INFO ------------------------ ');
+        console.log('Details: ', details);
+        console.log('contractName: ', details.contractName);
+        console.log('Account: ', this.account);
+        console.log('El contract: ', contract);
+        console.log('El wallet: ', this.mintbaseWallet);
+      } else {
+        console.log('----------------------------------------------------- no account');
+      }
+    } catch (error) {
+      // @TODO return error
+      
     }
   }
 
@@ -129,21 +140,29 @@ export class MintbaseNearWallet {
     const { wallet, isConnected } = walletData;
 
     if (!isConnected) {
+      this.isLogged.next(false);
       throw new Error('Not connected');
     }
+    this.isLogged.next(true);
     await this.setInfo();
   }
 
   // Devuelve las things que pertenecen al usuario conectado
   public async getTokenFromCurrentWallet(): Promise<MintbaseThing[] | undefined> {
     const {data: details} = await this.mintbaseWallet.details();
-    return await this.mintbaseGraphql?.getWalletThings(details.accountId)
+    try {
+      const response = await this.mintbaseGraphql?.getWalletThings(details.accountId);
+      return response;
+    } catch (error) {
+      return [];
+    }
   }
 
   public disconnect() {
     this.mintbaseWallet.activeWallet?.signOut()
     this.mintbaseWallet.activeNearConnection = undefined
-    this.mintbaseWallet.activeAccount = undefined
+    this.mintbaseWallet.activeAccount = undefined;
+    this.isLogged.next(false);
   }
 
   public isLoggedIn(): Observable<boolean> {
@@ -165,9 +184,6 @@ export class MintbaseNearWallet {
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId;
     const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
 
-//console.log('contractName: ', contractName);
-//console.log('account: ', account)
-
     if (!account || !accountId) {
       throw new Error('Account is undefined.' );
     }
@@ -184,8 +200,6 @@ export class MintbaseNearWallet {
         this.mintbaseWallet.constants.STORE_CONTRACT_CALL_METHODS ||
         STORE_CONTRACT_CALL_METHODS,
     })
-
-    console.log('Contract para comprar: ', contract)
 
     // @ts-ignore: method does not exist on Contract type
     await contract.nft_transfer({
@@ -284,7 +298,6 @@ export class MintbaseNearWallet {
    * Only experimental login directly to near network
    */
   public async nearLogin() {
-    console.log('near Login enter ...');
 
     const _connectionObject = {
         deps: { keyStore: new keyStores.BrowserLocalStorageKeyStore() },
