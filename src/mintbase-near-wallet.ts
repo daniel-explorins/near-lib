@@ -33,7 +33,7 @@ import {
 } from './constants';
 import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
-import { BehaviorSubject, map, Observable, of, shareReplay } from 'rxjs';
+import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
 import { MintbaseThing } from '@explorins/types';
 
 /**
@@ -147,11 +147,23 @@ export class MintbaseNearWallet {
     await this.setInfo();
   }
 
+  // TODO check retry logic
   // Devuelve las things que pertenecen al usuario conectado
-  public async getTokenFromCurrentWallet(): Promise<MintbaseThing[] | undefined> {
+  public async getTokenFromCurrentWallet(intent = 0): Promise<MintbaseThing[] |undefined> {
+    intent++
+
+    await firstValueFrom(this._isLogged$.pipe(
+      filter(ev => ev === true))
+    )
     const {data: details} = await this.mintbaseWallet.details();
     try {
       const response = await this.mintbaseGraphql?.getWalletThings(details.accountId);
+      console.log('response', response, )
+      if(response === undefined && intent < 20) {
+        await firstValueFrom(timer(intent * 5000))
+        console.log('retry get token from wallet intent ' + intent)
+        return this.getTokenFromCurrentWallet(intent)
+      }
       return response;
     } catch (error) {
       return [];
@@ -165,9 +177,9 @@ export class MintbaseNearWallet {
     this._isLogged$.next(false);
   }
 
-  public isLoggedIn(): Observable<boolean> {
+  /* public isLoggedIn(): Observable<boolean> {
     return of(this.mintbaseWallet.isConnected());
-  }
+  } */
 
   /**
    * Transfer one token.
