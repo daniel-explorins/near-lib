@@ -215,7 +215,8 @@ export class NearWallet {
   } */
 
   /**
-   * Transfer one token.
+   * Transfer one token inside mintbase wallet. 
+   * This method depends on STORE_CONTRACT_CALL_METHODS and STORE_CONTRACT_VIEW_METHODS ,  twice mintbase constants
    * @param {string} tokenId The token id to transfer.
    * @param {string} receiverId The account id to transfer to.
    * @param {string} contractName The contract name to transfer tokens from.

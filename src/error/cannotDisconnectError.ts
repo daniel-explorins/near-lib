@@ -8,7 +8,7 @@ export class CannotDisconnectError extends Error {
         this.code = code;
     }
 
-    public static becauseAccountNotFound() {
-        return new CannotDisconnectError(ERRORS.TRANSFER_TOKEN.ACCOUNT_NOT_FOUND)
+    public static becauseMintbaseError() {
+        return new CannotDisconnectError(ERRORS.DISCONNECT.MINTBASE_ERROR)
     }
 }
