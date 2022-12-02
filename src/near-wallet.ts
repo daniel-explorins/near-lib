@@ -75,6 +75,7 @@ export class NearWallet {
    * @param {string} apiKey 
    * @param {Network} networkName - default value is 'testnet'
    * @param {Chain} chain - default value is 'near'
+   * @throws {CannotConnectError} if network is unrecognized
    */
   public constructor(
     private apiKey: string,
@@ -89,7 +90,7 @@ export class NearWallet {
         this.networkConfig = TESTNET_CONFIG;
         break;
       default:
-        throw new Error('Unsupported network: ' + networkName);
+        throw CannotConnectError.becauseUnsupportedNetwork();
     }
 
     // Set the mintbase main variables
@@ -171,8 +172,12 @@ export class NearWallet {
     await this.setInfo();
   }
 
-  // TODO check retry logic
-  // Devuelve las things que pertenecen al usuario conectado
+  /**
+   * TODO: check retry logic
+   * Devuelve las things que pertenecen al usuario conectado
+   * @param intent 
+   * @returns 
+   */
   public async getTokenFromCurrentWallet(intent = 0): Promise<MintbaseThing[] | undefined> {
     intent++
 
@@ -321,8 +326,6 @@ export class NearWallet {
     const account = this.mintbaseWallet.activeWallet?.account()
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId
     const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName
-
-
 
     if (!account || !accountId) {
       throw new Error('Account is undefined.');
