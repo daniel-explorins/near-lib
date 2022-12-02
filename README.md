@@ -6,14 +6,14 @@ This library provides a gateway to connect to your mintbase near wallet.
 
 
 ```typescript
-import { MintbaseNearWallet } from '@explorins/near-lib';
+import { NearWallet } from '@explorins/near-lib';
 
-    const wallet = new MintbaseNearWallet(
+    const wallet = new NearWallet(
       MINTBASE_API_KEY
     );
 
     // Connect to your near wallet
-    await wallet.mintbaseLogins();
+    await wallet.mintbaseLogin();
 
     // Retrieve the basic information
     const walletDetails = await this.wallet.getDetails();

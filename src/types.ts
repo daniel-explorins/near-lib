@@ -1,35 +1,24 @@
+import { DisplayType, MetadataField, MintMetadata, Royalties, Token } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 
-enum Chain {
+/** Lib only works with near */
+export enum Chain {
   near = 'near',
 }
 
-enum Network {
+export enum Network {
   mainnet = 'mainnet',
   testnet = 'testnet',
 }
 
-interface NEARConfig {
+export interface NetworkConfig {
   networkId: string,
   nodeUrl: string
   walletUrl: string
-  helperUrl: string
-}
-
-interface List {
-  acceptedOfferId?: string
-  autoTransfer?: boolean
-  ownerId?: string
-  price?: string
-  storeId?: string
-  tokenId?: string
-  id?: string
-  tokenKey?: string
-  txId?: string
-  groupId?: string
-  createdAt?: Date
-  removedAt?: Date
-  currentOfferId?: string
+  helperUrl: string,
+  explorerUrl: string,
+  // TODO: improve this type
+  headers: { [key: string]: string | number; }
 }
 
 interface Constants {
@@ -58,46 +47,25 @@ interface CloudStorageConstants {
   storageBucket: string
 }
 
-interface WalletConfig {
+export interface WalletConfig {
   apiKey: string
   chain?: Chain
   networkName?: Network
 }
 
-/**
- * Mintbase API configuration object
- * @param chain `Chain` type to use. Defaults to `Chain.near`
- * @param networkName `Network` type to use. Defaults to `Network.testnet` (testnet)
- * @param apiBaseUrl The API base url
- */
-interface MintbaseAPIConfig {
-  chain?: Chain
-  networkName?: Network
-  apiBaseUrl?: string
-  apiKey?: string
-  constants: Constants
+interface NearWalletDetails {
+  accountId: string
+  balance: string
+  allowance: string
+  contractName: string
 }
 
-interface WalletLoginProps {
-  requestSignIn?: boolean
-  contractAddress?: string
-  accountId?: string
-  privateKey?: string // useful for node environment
+interface NearToken extends Token {
+  creator: string
 }
 
-interface Token {
-  id: string
-  ownerId: string
-  storeId: string
-  thingId: string
-}
-
-interface Split {
-  [account: string]: number
-}
-
-interface Royalties {
-  [account: string]: number
+interface NearRoyalties extends Royalties {
+  [creator: string]: number
 }
 
 interface Account {
@@ -109,80 +77,22 @@ enum Visibility {
   safe = 'safe',
 }
 
-enum DisplayType {
-  boostNumber = 'boost_number',
-  boostPercentage = 'boost_percentage',
-  number = 'number',
-  date = 'date',
-  location = 'location',
-  website = 'website',
-  zoom = 'zoom',
-  placeId = 'place_id',
-  rarity = 'rarity',
-  youtubeUrl = 'youtube_url',
-  latitude = 'latitude',
-  longitude = 'longitude',
-}
-
 interface Attribute {
   trait_type: string
   display_type?: DisplayType
   value: string | number
 }
 
-enum MetadataField {
-  Id = 'id',
-  Title = 'title',
-  Category = 'category',
-  Description = 'description',
-  Media = 'media',
-  Media_hash = 'media_hash',
-  Tags = 'tags',
-  Image_preview = 'imagePreview',
-  Copies = 'copies',
-  Extra = 'extra',
-  External_url = 'external_url',
-  Background_color = 'background_color',
-  Animation_url = 'animation_url',
-  Animation_hash = 'animation_hash',
-  Youtube_url = 'youtube_url',
-  UpdatedAt = 'updated_at',
-  Document = 'document',
-  Document_hash = 'document_hash',
-  Lock = 'lock',
-  Visibility = 'visibility',
-  Chain = 'chain',
-  Store = 'store',
-  Royalty = 'royalty',
-  Royalty_perc = 'royalty_perc',
-  SplitRevenue = 'split_revenue',
-}
+enum MetadataFieldExtension {
+  Printable = 'printable'
+};
 
-interface MintMetadata {
-  [MetadataField.Id]?: string
-  [MetadataField.Title]: string
-  [MetadataField.Category]: string | null
-  [MetadataField.Description]: string | null
-  [MetadataField.Media]: string
-  [MetadataField.Media_hash]: string | null
-  [MetadataField.Tags]: string[]
-  [MetadataField.Image_preview]: string | null
-  [MetadataField.Copies]: number
-  [MetadataField.Extra]: Attribute[]
-  [MetadataField.External_url]: string | null
-  [MetadataField.Background_color]: string | null
-  [MetadataField.Animation_url]: string | null
-  [MetadataField.Animation_hash]: string | null
-  [MetadataField.Youtube_url]: string | null
-  [MetadataField.Document]: string | null
-  [MetadataField.Document_hash]: string[] | null
-  [MetadataField.Lock]: string[]
-  [MetadataField.Visibility]: Visibility
-  [MetadataField.Chain]: Chain
-  [MetadataField.Store]?: string | null
-  [MetadataField.Royalty]: { [key: string]: number } | null
-  [MetadataField.Royalty_perc]: number | null
-}
+interface Metadata extends MintMetadata {
+  [MetadataFieldExtension.Printable]?: boolean
+};
+
+type MetadataFields = MetadataFieldExtension | MetadataField;
+
 
 type OptionalMethodArgs = {
   gas?: string
@@ -201,25 +111,17 @@ type NearTransaction = Transaction & {
 }
 
 export {
-  Chain,
-  Network,
-  MintbaseAPIConfig,
-  WalletLoginProps,
-  Split,
-  Royalties,
-  Token,
-  List,
+  NearWalletDetails,
+  NearToken,
   Account,
   Visibility,
-  DisplayType,
   Attribute,
-  MetadataField,
-  MintMetadata,
-  NEARConfig,
+  MetadataFields,
+  Metadata,
+  NearRoyalties,
   Constants,
   CloudStorageConstants,
-  WalletConfig,
   OptionalMethodArgs,
   WalletConnectProps,
-  NearTransaction,
+  NearTransaction
 }
