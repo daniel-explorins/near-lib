@@ -1,5 +1,5 @@
 import BN from 'bn.js'
-import { MetadataField } from './types'
+import { MetadataField } from 'mintbase';
 
 export const TESTNET_CONFIG = {
   networkId: "testnet",
@@ -156,26 +156,6 @@ export const REGEX_URL = new RegExp(
     '$',
   'i'
 )
-
-export const ERROR_MESSAGES = {
-  fileSizeExceeded: 'File size exceeded',
-  fileTypeNotAccepted: 'File type not accepted',
-  fileNoExtension: 'File does not have extension',
-  metadataSet: 'Failed at setting metadata',
-  metadataEmpty: 'Metadata is empty',
-  notString: 'Value is not of type string',
-  badUrl: 'URL is not well formatted',
-  uploadFileAndSet: 'Failed at uploading and setting metadata field',
-  uploadFile: 'Failed at uploading file',
-  uploadCloud: 'Failed at uploading file to the cloud',
-  uploadMetadata: 'Failed at uploading metadata',
-  decentralizedStorageFailed: 'Failed storing on Arweave',
-  invalidKeyPair: 'No valid key pair',
-  undefinedAccountId: 'Account Id is undefined',
-  undefinedKeyStore: 'Key Store is undefined',
-  walletNotConnected: 'Wallet is not connected',
-  invalidRoyalties: 'Royalty percentage is invalid',
-}
 
 export const MIME_TYPES = {
   gltf: 'model/gltf+json',

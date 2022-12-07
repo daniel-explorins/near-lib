@@ -13,7 +13,7 @@ import { NearWallet } from '@explorins/near-lib';
     );
 
     // Connect to your near wallet
-    await wallet.mintbaseLogins();
+    await wallet.mintbaseLogin();
 
     // Retrieve the basic information
     const walletDetails = await this.wallet.getDetails();
