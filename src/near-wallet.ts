@@ -16,7 +16,8 @@ import {
 } from 'near-api-js';
 
 import {
-  NEARConfig, OptionalMethodArgs,
+  NetworkConfig,
+  OptionalMethodArgs,
 } from './types'
 
 import { 
@@ -31,20 +32,23 @@ import {
   MARKET_CONTRACT_CALL_METHODS,
   MAINNET_CONFIG
 } from './constants';
-import { WalletConfig } from './mintbase-types';
 import { MintbaseGraphql } from './mintbase-graphql';
 import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
 import { MintbaseThing } from '@explorins/types';
+import { WalletConfig } from 'mintbase/lib/types';
 
-/**
- * Object that contains the methods and variables necessary to interact with the near wallet
+/** 
+ * Object that contains the methods and variables necessary to interact with the near mintbase wallet 
  */
-export class MintbaseNearWallet {
-
+export class NearWallet {
+  /** Internal subject that stores login state */
   private _isLogged$ = new BehaviorSubject(false);
-  public isLogged$ = this._isLogged$.pipe(shareReplay(1))// asObservable();
 
-  private networkConfig: any;
+  /** Network configuration */
+  private networkConfig: NetworkConfig;
+
+  /** External public observable to login state */
+  public isLogged$ = this._isLogged$.asObservable().pipe(shareReplay());
 
   public mintbaseGraphql: MintbaseGraphql|undefined;
 
@@ -56,6 +60,8 @@ export class MintbaseNearWallet {
 
   /** mintbaseWallet is the object that contains all mintbase methods and parameters */
   private mintbaseWallet: MintbaseWallet;
+
+  /** Configuration object to login in mintbase */
   private mintbaseWalletConfig: WalletConfig;
   
   /**
@@ -85,8 +91,9 @@ export class MintbaseNearWallet {
     this.mintbaseWalletConfig = {
       networkName: networkName,
       chain: chain,
-      apiKey: apiKey,
+      apiKey: this.apiKey,
     };
+
   }
 
   public async getDetails() {
@@ -133,6 +140,7 @@ export class MintbaseNearWallet {
 
   /**
    * We use the mintbase object to make the connection so we can use its methods and properties
+   * @throws {Error} if user not connect to near wallet
    */
   public async mintbaseLogin(): Promise<void> 
   { 
@@ -311,22 +319,15 @@ export class MintbaseNearWallet {
    */
   public async nearLogin() {
 
-    const _connectionObject = {
-        deps: { keyStore: new keyStores.BrowserLocalStorageKeyStore() },
-        headers: {
-          'Content-Type': 'application/json',
+    const connectionObject = {
+        deps: { 
+          keyStore: new keyStores.BrowserLocalStorageKeyStore()
         },
-        ...this.networkConfig,
-        contractName: this.networkName
+        ...this.networkConfig
       }
 
     const nearConnection = await connect(
-      {
-        ...this.networkConfig,
-        contractName:
-            FACTORY_CONTRACT_NAME,
-        keyStore: new keyStores.BrowserLocalStorageKeyStore(),
-      }
+      connectionObject
     )
   }
 

@@ -1,11 +1,9 @@
-import { API } from './api'
 import { MintbaseGraphql } from './mintbase-graphql'
-import { MintbaseNearWallet } from './mintbase-near-wallet'
+import { NearWallet } from './near-wallet'
 
 // Pruebas git
 
 export {
-  API,
-  MintbaseNearWallet,
+  NearWallet,
   MintbaseGraphql
 }

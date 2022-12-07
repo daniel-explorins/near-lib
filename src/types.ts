@@ -1,38 +1,27 @@
+import { Constants } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 
-enum Chain {
+/** Lib only works with near */
+export enum Chain {
   near = 'near',
 }
 
-enum Network {
+export enum Network {
   mainnet = 'mainnet',
   testnet = 'testnet',
 }
 
-interface NEARConfig {
+export interface NetworkConfig {
   networkId: string,
   nodeUrl: string
   walletUrl: string
-  helperUrl: string
+  helperUrl: string,
+  explorerUrl: string,
+  // TODO: improve this type
+  headers: { [key: string]: string | number; }
 }
 
-interface List {
-  acceptedOfferId?: string
-  autoTransfer?: boolean
-  ownerId?: string
-  price?: string
-  storeId?: string
-  tokenId?: string
-  id?: string
-  tokenKey?: string
-  txId?: string
-  groupId?: string
-  createdAt?: Date
-  removedAt?: Date
-  currentOfferId?: string
-}
-
-interface Constants {
+interface MintbaseConstants extends Constants {
   API_VERSION?: string
   API_BASE_NEAR_MAINNET?: string
   API_BASE_NEAR_TESTNET?: string
@@ -58,7 +47,7 @@ interface CloudStorageConstants {
   storageBucket: string
 }
 
-interface WalletConfig {
+export interface WalletConfig {
   apiKey: string
   chain?: Chain
   networkName?: Network
@@ -201,24 +190,19 @@ type NearTransaction = Transaction & {
 }
 
 export {
-  Chain,
-  Network,
   MintbaseAPIConfig,
   WalletLoginProps,
   Split,
   Royalties,
   Token,
-  List,
+  MintbaseConstants,
   Account,
   Visibility,
   DisplayType,
   Attribute,
   MetadataField,
   MintMetadata,
-  NEARConfig,
-  Constants,
   CloudStorageConstants,
-  WalletConfig,
   OptionalMethodArgs,
   WalletConnectProps,
   NearTransaction,
