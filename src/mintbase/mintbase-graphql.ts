@@ -1,8 +1,8 @@
 import { request, gql } from 'graphql-request'
 import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
-import { API_BASE_NEAR_TESTNET } from './constants';
-import { storeGeneralQuery, thingGeneralQuery } from './utils/graphQuery';
+import { API_BASE_NEAR_TESTNET } from '../constants';
+import { storeGeneralQuery, thingGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
 import { MintbaseThing } from '@explorins/types';
 

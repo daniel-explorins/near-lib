@@ -8,6 +8,10 @@ export class CannotTransferTokenError extends Error {
         this.code = code;
     }
 
+    public static becauseMintbaseNotConnected() {
+        return new CannotTransferTokenError(ERRORS.TRANSFER_TOKEN.MINTBASE_NOT_CONNECTED)
+    }
+
     public static becauseAccountNotFound() {
         return new CannotTransferTokenError(ERRORS.TRANSFER_TOKEN.ACCOUNT_NOT_FOUND);
     }

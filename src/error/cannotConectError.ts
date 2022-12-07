@@ -16,6 +16,14 @@ export class CannotConnectError extends Error {
         return new CannotConnectError(ERRORS.CONNECT.MINTBASE_LOGIN)
     }
 
+    public static becauseMintbaseNotConnected() {
+        return new CannotConnectError(ERRORS.CONNECT.MINTBASE_NOT_CONNECTED)
+    }
+
+    public static becauseMintbaseError() {
+        return new CannotConnectError(ERRORS.CONNECT.MINTBASE_ERROR)
+    }
+
     public static becauseUnsupportedNetwork() {
         return new CannotConnectError(ERRORS.CONNECT.USUPPORTED_NETWORK)
     }

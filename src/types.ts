@@ -1,14 +1,9 @@
-import { DisplayType, MetadataField, Constants, MintMetadata, Royalties, Token } from 'mintbase';
+import { DisplayType, MetadataField, Constants, MintMetadata, Royalties, Token, Network } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 
 /** Lib only works with near */
 export enum Chain {
   near = 'near',
-}
-
-export enum Network {
-  mainnet = 'mainnet',
-  testnet = 'testnet',
 }
 
 export interface NetworkConfig {
@@ -83,6 +78,14 @@ interface Attribute {
   value: string | number
 }
 
+
+enum NearNetwork { 
+  testnet = 'testnet',
+  mainnet = 'mainnet',
+  mintbase_testnet = 'mintbase_testnet',
+  mintbase_mainnet = 'mintbase_mainnet'
+};
+
 enum MetadataFieldExtension {
   Printable = 'printable'
 };
@@ -123,5 +126,6 @@ export {
   CloudStorageConstants,
   OptionalMethodArgs,
   WalletConnectProps,
-  NearTransaction
+  NearTransaction,
+  NearNetwork
 }

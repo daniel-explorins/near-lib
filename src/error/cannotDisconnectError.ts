@@ -11,4 +11,12 @@ export class CannotDisconnectError extends Error {
     public static becauseMintbaseError() {
         return new CannotDisconnectError(ERRORS.DISCONNECT.MINTBASE_ERROR)
     }
+
+    public static becauseMintbaseNotConnected() {
+        return new CannotDisconnectError(ERRORS.DISCONNECT.MINTBASE_NOT_CONNECTED)
+    }
+
+    public static becauseAlreadyDisconnected() {
+        return new CannotDisconnectError(ERRORS.DISCONNECT.ALREADY_DISCONNECTED)
+    }
 }

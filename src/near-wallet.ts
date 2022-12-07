@@ -1,21 +1,12 @@
 
-/* import { API } from './api';
-import { request, gql } from 'graphql-request'
- */
-import {
-  Wallet as MintbaseWallet,
-  Chain,
-  Network,
-} from 'mintbase';
 
 import {
-  keyStores,
-  connect,
   Contract,
   ConnectedWalletAccount
 } from 'near-api-js';
 
 import {
+  NearNetwork,
   NearWalletDetails,
   NetworkConfig,
   OptionalMethodArgs,
@@ -27,19 +18,21 @@ import {
   STORE_CONTRACT_CALL_METHODS,
   TESTNET_CONFIG,
   MAX_GAS,
-  ONE_YOCTO,
   TWENTY_FOUR,
   MARKET_CONTRACT_VIEW_METHODS,
   MARKET_CONTRACT_CALL_METHODS,
   MAINNET_CONFIG
 } from './constants';
-import { MintbaseGraphql } from './mintbase-graphql';
+import { MintbaseGraphql } from './mintbase/mintbase-graphql';
 import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
 import { MintbaseThing } from '@explorins/types';
-import { WalletConfig } from 'mintbase/lib/types';
 import { CannotConnectError } from './error/cannotConectError';
 import { CannotDisconnectError } from './error/cannotDisconnectError';
 import { CannotTransferTokenError } from './error/cannotTransferTokenError';
+import { MintbaseWallet } from './mintbase/mintbase-wallet';
+import { Network } from 'mintbase';
+import { CannotGetContractError } from './error/CannotGetContractError';
+import { CannotGetTokenError } from './error/CannotGetTokenError';
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near mintbase wallet 
@@ -49,7 +42,7 @@ export class NearWallet {
   private _isLogged$ = new BehaviorSubject(false);
 
   /** Network configuration */
-  private networkConfig: NetworkConfig;
+  private networkConfig: NetworkConfig|undefined;
 
   /** External public observable to login state */
   public isLogged$ = this._isLogged$.asObservable().pipe(shareReplay());
@@ -63,10 +56,7 @@ export class NearWallet {
   public account: ConnectedWalletAccount | undefined;
 
   /** mintbaseWallet is the object that contains all mintbase methods and parameters */
-  private mintbaseWallet: MintbaseWallet;
-
-  /** Configuration object to login in mintbase */
-  private mintbaseWalletConfig: WalletConfig;
+  private mintbaseWallet: MintbaseWallet|null = null;
 
   /** Show development helper logs */
   private logs: boolean = true;
@@ -74,201 +64,193 @@ export class NearWallet {
   /**
    * @param {string} apiKey 
    * @param {Network} networkName - default value is 'testnet'
-   * @param {Chain} chain - default value is 'near'
    * @throws {CannotConnectError} if network is unrecognized
    */
   public constructor(
     private apiKey: string,
-    public networkName: string,
-    public chain = Chain.near
+    public networkName: string
   ) {
     switch (networkName) {
-      case Network.mainnet:
+      case NearNetwork.mainnet:
         this.networkConfig = MAINNET_CONFIG;
         break;
-      case Network.testnet:
+      case NearNetwork.testnet:
         this.networkConfig = TESTNET_CONFIG;
+        break;
+      case NearNetwork.mintbase_mainnet:
+        this.mintbaseWallet = new MintbaseWallet(apiKey, Network.mainnet);
+        break;
+      case NearNetwork.mintbase_testnet:
+        this.mintbaseWallet = new MintbaseWallet(apiKey, Network.testnet);
         break;
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
-
-    // Set the mintbase main variables
-    this.mintbaseWallet = new MintbaseWallet();
-
-    this.mintbaseWalletConfig = {
-      networkName: networkName,
-      chain: chain,
-      apiKey: this.apiKey,
-    };
-
   }
 
   /**
-   * 
+   * @description It is simply a bridge to the details of the wallet
    * @returns {NearWalletDetails} get details stored in mintbase connection object
+   * @throws {CannotConnectError} If dont have mintbase wallet or mintbase lib method throws an exception
    */
   public async getDetails(): Promise<NearWalletDetails> {
-    const { data: details } = await this.mintbaseWallet.details();
-    return details;
-  }
-
-  public async connect() {
-
-    if (this.mintbaseWallet.isConnected()) {
-      return
-    };
-    // If the wallet is not connected, we go to the connection page
-    await this.mintbaseWallet.connect({ requestSignIn: true });
-
+    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+    
+    try {
+      const { data: details } = await this.mintbaseWallet.details();
+      return details;
+    } catch (error) {
+      throw CannotConnectError.becauseMintbaseError();
+    }
   }
 
   /**
-   * TODO: Errores mas coherentes
-   * @throws {CannotConnectError} 
+   * @description 
+   * @returns 
+   * @throws {CannotConnectError}
    */
-  private async setInfo() {
+  public async connect() {
+    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+    
+    if (this.mintbaseWallet.isConnected()) return;
+    
+    try {
+      // If the wallet is not connected, we go to the connection page
+      await this.mintbaseWallet.connect({ requestSignIn: true });
+    } catch (error) {
+      throw CannotConnectError.becauseMintbaseLoginFail();
+    }
+  }
+
+  /**
+   * @description
+   * @throws {CannotGetContractError}
+   */
+  public getContract() {
+    if(!this.account) throw CannotGetContractError.becauseUserNotFound();
+    if(!this.contractName) throw CannotGetContractError.becauseContractNameNotFound();
+
+    try {
+      
+      const contract = new Contract(
+        this.account, 
+        this.contractName,
+        {
+          viewMethods: STORE_CONTRACT_VIEW_METHODS,
+          changeMethods: STORE_CONTRACT_CALL_METHODS
+        }
+      );
+
+      return contract;
+      
+    } catch (error) {
+      throw CannotGetContractError.becauseNearError();
+    }
+  }
+
+  /**
+   * @description We use the mintbase object to make the connection so we can use its methods and properties
+   * Set local variables to work with mintbase connection
+   * @throws {CannotConnectError} if user not connect to near wallet
+   */
+  public async loginToWallet(): Promise<void> {
+    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+
+    try {
+      await this.mintbaseWallet.mintbaseLogin();
+    } catch (error) {
+      this._isLogged$.next(false);
+    }
+    this._isLogged$.next(true);
+    
     try {
       const { data: details } = await this.mintbaseWallet.details();
-
       this.contractName = details.contractName;
       this.account = this.mintbaseWallet.activeWallet?.account();
       this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
-      if (this.account) {
-        const contract = new Contract(this.account, details.contractName, {
-          viewMethods: STORE_CONTRACT_VIEW_METHODS,
-          changeMethods: STORE_CONTRACT_CALL_METHODS,
-        });
-        // show development helper logs
-        if (this.logs) {
-          console.log('----------------------------------------------------- NEAR INFO ------------------------ ');
-          console.log('Details: ', details);
-          console.log('contractName: ', details.contractName);
-          console.log('Account: ', this.account);
-          console.log('El contract: ', contract);
-          console.log('El wallet: ', this.mintbaseWallet);
-        }
-      } else {
-        throw new Error('no account');
-      }
     } catch (error) {
-      throw CannotConnectError.becauseUserNotFound();
+      throw CannotConnectError.becauseMintbaseError();
+    }
+       
+    // show development helper logs
+    if (this.logs) {
+      console.log('----------------------------------------------------- NEAR INFO ------------------------ ');
+      console.log('Account: ', this.account);
+      console.log('El wallet: ', this.mintbaseWallet);
     }
   }
 
   /**
-   * We use the mintbase object to make the connection so we can use its methods and properties
-   * @throws {CannotConnectError} WITH CODE: 0102, if user not connect to near wallet
-   */
-  public async mintbaseLogin(): Promise<void> {
-    const { data: walletData, error } = await this.mintbaseWallet.init(this.mintbaseWalletConfig);
-    const { wallet, isConnected } = walletData;
-
-    if (!isConnected) {
-      this._isLogged$.next(false);
-      throw CannotConnectError.becauseMintbaseLoginFail();
-    }
-    this._isLogged$.next(true);
-    await this.setInfo();
-  }
-
-  /**
-   * TODO: check retry logic
-   * Devuelve las things que pertenecen al usuario conectado
+   * TODO: check retryFetch logic
+   * @description Devuelve las things que pertenecen al usuario conectado
    * @param intent 
-   * @returns 
+   * 
+   * @throws {CannotConnectError} if error occurs in mintbase wallet bridge 
+   * @throws {CannotGetTokenError} If mintbase not found or timeout error
    */
   public async getTokenFromCurrentWallet(intent = 0): Promise<MintbaseThing[] | undefined> {
+    if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
+
     intent++
+    const accountId = await this.mintbaseWallet?.getAccountId();
 
     await firstValueFrom(this._isLogged$.pipe(
       filter(ev => ev === true))
     )
-    const { data: details } = await this.mintbaseWallet.details();
-    try {
-      const response = await this.mintbaseGraphql?.getWalletThings(details.accountId);
-      console.log('response', response,)
+     try {
+      const response = await this.mintbaseGraphql?.getWalletThings(accountId);
+
       if (response === undefined && intent < 20) {
         await firstValueFrom(timer(intent * 5000))
-        console.log('retry get token from wallet intent ' + intent)
         return this.getTokenFromCurrentWallet(intent)
       }
       return response;
     } catch (error) {
-      return [];
+      throw CannotGetTokenError.becauseTimeoutError();
     }
   }
 
   /**
-   * Do mintbase signOut, clean local variables and update logged observable
+   * @description Do mintbase signOut, clean local variables and update logged observable
    * @throws {CannotDisconnectError} if mintbase signout method fails
    */
-  public disconnect(): void {
-    try {
-      this.mintbaseWallet.activeWallet?.signOut()
-    } catch (error) {
-      throw CannotDisconnectError.becauseMintbaseError();
-    }
-
-    this.mintbaseWallet.activeNearConnection = undefined
-    this.mintbaseWallet.activeAccount = undefined;
+  public disconnect(): void 
+  {
+    if(!this.mintbaseWallet) throw CannotDisconnectError.becauseMintbaseNotConnected();
+    if(!this._isLogged$.value) throw CannotDisconnectError.becauseAlreadyDisconnected();
+    
+    this.mintbaseWallet.logout();
     this._isLogged$.next(false);
   }
 
-  /* public isLoggedIn(): Observable<boolean> {
-    return of(this.mintbaseWallet.isConnected());
-  } */
 
   /**
-   * Transfer one token inside mintbase wallet. 
-   * This method depends on STORE_CONTRACT_CALL_METHODS and STORE_CONTRACT_VIEW_METHODS ,  twice mintbase constants
+   * @description Transfer one token inside mintbase wallet. 
+   * @description This method depends on STORE_CONTRACT_CALL_METHODS and STORE_CONTRACT_VIEW_METHODS ,  twice mintbase constants
    * @param {string} tokenId The token id to transfer.
-   * @param {string} receiverId The account id to transfer to.
-   * @param {string} contractName The contract name to transfer tokens from.
    * @throws {CannotTransferTokenError}
    */
   public async transferToken(
-    tokenId: string,
-    gas = MAX_GAS
-  ): Promise<void> {
+    tokenId: string
+  ): Promise<void> 
+  {
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+    await this.mintbaseWallet?.transferToken(tokenId);
 
-    const account = this.mintbaseWallet.activeWallet?.account()
-    const accountId = this.mintbaseWallet.activeWallet?.account().accountId;
-    const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
-
-    if (!account || !accountId) {
-      throw CannotTransferTokenError.becauseAccountNotFound();
-    }
-
-    if (!contractName) {
-      throw CannotTransferTokenError.becauseContractNotFound();
-    }
-
-    const contract = new Contract(account, contractName, {
-      viewMethods:
-        this.mintbaseWallet.constants.STORE_CONTRACT_VIEW_METHODS ||
-        STORE_CONTRACT_VIEW_METHODS,
-      changeMethods:
-        this.mintbaseWallet.constants.STORE_CONTRACT_CALL_METHODS ||
-        STORE_CONTRACT_CALL_METHODS,
-    })
-    try {
-      // @ts-ignore: method does not exist on Contract type
-      await contract.nft_transfer({
-        args: { receiver_id: accountId, token_id: tokenId },
-        gas: gas,
-        amount: ONE_YOCTO,
-      });
-    } catch (error) {
-      throw CannotTransferTokenError.becauseTransactionFails();
-    }
-    
   }
 
   public async getMyThings(myStoreId: string) {
     return await this.mintbaseGraphql?.getStoreThings(myStoreId)
   }
 
+  /**
+   * @description
+   * @param tokenId 
+   * @param price 
+   * @param storeId 
+   * @param options 
+   * @returns 
+   */
   public async makeOffer(
     tokenId: string,
     price: string,
@@ -278,6 +260,8 @@ export class NearWallet {
       timeout?: number
     }
   ): Promise<any> {
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+
     const account = this.mintbaseWallet.activeWallet?.account()
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId
     const gas = MAX_GAS;
@@ -322,7 +306,7 @@ export class NearWallet {
    * Este método "list_minters" está en la documentación de mintbase, pero no existe ??
    */
   public async getMinters() {
-
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
     const account = this.mintbaseWallet.activeWallet?.account()
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId
     const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName
@@ -348,22 +332,6 @@ export class NearWallet {
     const minters = await contract.list_minters();
   }
 
-  /**
-   * Only experimental login directly to near network
-   */
-  public async nearLogin() {
-
-    const connectionObject = {
-        deps: { 
-          keyStore: new keyStores.BrowserLocalStorageKeyStore()
-        },
-        ...this.networkConfig
-      }
-
-    const nearConnection = await connect(
-      connectionObject
-    )
-  }
 
   /**
    * @param limit number of results
@@ -374,6 +342,8 @@ export class NearWallet {
     offset?: number,
     limit?: number
   ) {
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+
     const response = await this.mintbaseWallet.api?.fetchMarketplace(offset, limit);
     if (response) return response.data;
     else throw new Error('Marketplace cannot be accessed.')
@@ -389,6 +359,8 @@ export class NearWallet {
     offset?: number,
     limit?: number
   ) {
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+
     const response = await this.mintbaseWallet.api?.fetchStores(offset, limit);
     if (response) return response.data.store;
     else throw new Error('Marketplace cannot be accessed.')
@@ -401,7 +373,7 @@ export class NearWallet {
   }
 
   /**
-   * 
+   * @description
    * @param storeId 
    * @returns 
    */
@@ -410,9 +382,16 @@ export class NearWallet {
   }
 
 
+  /**
+   * @description
+   * @param storeId 
+   * @returns 
+   */
   public async fetchStoreById(
     storeId: string
   ) {
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+
     const response = await this.mintbaseWallet.api?.fetchStoreById(storeId);
     if (response) return response.data;
     else throw new Error('Store cannot be accessed.')

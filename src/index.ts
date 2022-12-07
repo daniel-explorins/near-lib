@@ -1,4 +1,4 @@
-import { MintbaseGraphql } from './mintbase-graphql'
+import { MintbaseGraphql } from './mintbase/mintbase-graphql'
 import { NearWallet } from './near-wallet'
 
 // Pruebas git
