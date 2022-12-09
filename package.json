@@ -1,6 +1,6 @@
 {
   "name": "@explorins/near-lib",
-  "version": "0.0.15",
+  "version": "0.1.0",
   "description": "Explorins lib to interact with mintbase & near",
   "main": "lib/index.js",
   "publishConfig": {
