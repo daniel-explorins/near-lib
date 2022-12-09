@@ -37,6 +37,20 @@ export default {
     },
     FETCH_STORE: {
         MINTBASE_NOT_CONNECTED: '0701',
-        MINTBASE_ERROR: '0702'
+        MINTBASE_ERROR: '0702',
+        GRAPHQL_ERROR: '0703'
+    },
+    FETCH_THINGS: {
+        MINTBASE_NOT_CONNECTED: '0801',
+        MINTBASE_ERROR: '0802'
+    },
+    GET_MINTERS: {
+        MINTBASE_NOT_CONNECTED: '0901',
+        MINTBASE_ERROR: '0902',
+        CONTRACT_ERROR: '0903'
+    },
+    FETCH_MARKETPLACE: {
+        MINTBASE_NOT_CONNECTED: '1001',
+        MINTBASE_ERROR: '1002'
     },
 }

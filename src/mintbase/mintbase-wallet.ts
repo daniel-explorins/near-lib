@@ -4,6 +4,7 @@ import { Contract } from "near-api-js";
 import { FACTORY_CONTRACT_NAME, MARKET_CONTRACT_CALL_METHODS, MARKET_CONTRACT_VIEW_METHODS, MAX_GAS, ONE_YOCTO, STORE_CONTRACT_CALL_METHODS, STORE_CONTRACT_VIEW_METHODS, TWENTY_FOUR } from "src/constants";
 import { CannotConnectError } from "src/error/cannotConectError";
 import { CannotDisconnectError } from "src/error/cannotDisconnectError";
+import { cannotFetchMarketPlaceError } from "src/error/cannotFetchMarketPlaceError";
 import { cannotFetchStoreError } from "src/error/cannotFetchStoreError";
 import { cannotMakeOfferError } from "src/error/cannotMakeOfferError";
 import { CannotTransferTokenError } from "src/error/cannotTransferTokenError";
@@ -43,10 +44,25 @@ export class MintbaseWallet extends Wallet {
           };
     }
 
+  /**
+   * @param limit number of results
+   * @param offset number of records to skip
+   * @throws {cannotFetchMarketPlaceError}
+   */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    public async fetchMarketplace(
+      offset?: number,
+      limit?: number
+    ) {
+      const response = await this.api?.fetchMarketplace(offset, limit);
+      if (response) return response.data;
+      else throw cannotFetchMarketPlaceError.becauseMintbaseError();
+    }
+
 
     /**
-     * @description
-     * @throws {CannotConnectError}
+     * @description Initialize the mintbase wallet, this method must be called on app initialization
+     * @throws {CannotConnectError} If user is not currently logged in mintbase wallet
      */
     public async mintbaseLogin(): Promise<void>
     {
@@ -198,6 +214,26 @@ export class MintbaseWallet extends Wallet {
     }
 
     /**
+     * @description Returns all the stores that are listed in mintbase
+     * @param offset 
+     * @param limit 
+     * @throws {cannotFetchStoreError} 
+     */
+    public async fetchStores(
+      offset?: number,
+      limit?: number
+    ): Promise<any>
+    {
+      try {
+        const response = await this.api?.fetchStores(offset, limit);
+        if (response) return response.data.store;
+      } catch (error) {
+        cannotFetchStoreError.becauseMintbaseError();
+      }
+      throw cannotFetchStoreError.becauseMintbaseError();
+    }
+
+    /**
    * @description
    * @param storeId 
    * @throws {cannotFetchStoreError}
@@ -206,8 +242,12 @@ export class MintbaseWallet extends Wallet {
         storeId: string
     ): Promise<any>
     {
+      try {
         const response = await this.api?.fetchStoreById(storeId);
         if (response && response.data) return response.data;
-        else throw cannotFetchStoreError.becauseMintbaseError();
+      } catch (error) {
+        throw cannotFetchStoreError.becauseMintbaseError();
+      }
+      throw cannotFetchStoreError.becauseMintbaseError();
     }
 }

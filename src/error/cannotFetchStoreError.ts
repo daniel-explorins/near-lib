@@ -15,4 +15,8 @@ export class cannotFetchStoreError extends Error {
     public static becauseMintbaseError() {
         return new cannotFetchStoreError(ERRORS.FETCH_STORE.MINTBASE_ERROR)
     }
+
+    public static becauseGraphqlError() {
+        return new cannotFetchStoreError(ERRORS.FETCH_STORE.GRAPHQL_ERROR)
+    }
 }
