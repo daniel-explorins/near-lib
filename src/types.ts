@@ -1,4 +1,4 @@
-import { DisplayType, MetadataField, Constants, MintMetadata, Royalties, Token, Network } from 'mintbase';
+import { MetadataField, Constants, MintMetadata, Royalties, Token, Network } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 
 /** Lib only works with near */
@@ -17,21 +17,7 @@ export interface NetworkConfig {
 }
 
 interface MintbaseConstants extends Constants {
-  API_VERSION?: string
-  API_BASE_NEAR_MAINNET?: string
-  API_BASE_NEAR_TESTNET?: string
-  BASE_ARWEAVE_URI?: string
-  FACTORY_CONTRACT_NAME?: string
-  MARKET_ADDRESS?: string
-  STORE_CONTRACT_VIEW_METHODS?: string[]
-  STORE_CONTRACT_CALL_METHODS?: string[]
-  MARKET_CONTRACT_VIEW_METHODS?: string[]
-  MARKET_CONTRACT_CALL_METHODS?: string[]
-  FACTORY_CONTRACT_VIEW_METHODS?: string[]
-  FACTORY_CONTRACT_CALL_METHODS?: string[]
-  CLOUD_STORAGE_CONFIG?: CloudStorageConstants
-  DEFAULT_ROYALTY_PERCENT?: number
-  FILE_UPLOAD_SIZE_LIMIT?: number
+
 }
 
 interface CloudStorageConstants {
@@ -71,13 +57,6 @@ enum Visibility {
   nsfw = 'nsfw',
   safe = 'safe',
 }
-
-interface Attribute {
-  trait_type: string
-  display_type?: DisplayType
-  value: string | number
-}
-
 
 enum NearNetwork { 
   testnet = 'testnet',
@@ -119,7 +98,6 @@ export {
   NearToken,
   Account,
   Visibility,
-  Attribute,
   MetadataFields,
   Metadata,
   NearRoyalties,

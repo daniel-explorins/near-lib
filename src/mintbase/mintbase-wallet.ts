@@ -1,9 +1,11 @@
 import { Wallet } from "mintbase";
-import { Chain, Network, WalletConfig } from "mintbase/lib/types";
+import { Chain, Network, OptionalMethodArgs, WalletConfig } from "mintbase/lib/types";
 import { Contract } from "near-api-js";
-import { MAX_GAS, ONE_YOCTO, STORE_CONTRACT_CALL_METHODS, STORE_CONTRACT_VIEW_METHODS } from "src/constants";
+import { FACTORY_CONTRACT_NAME, MARKET_CONTRACT_CALL_METHODS, MARKET_CONTRACT_VIEW_METHODS, MAX_GAS, ONE_YOCTO, STORE_CONTRACT_CALL_METHODS, STORE_CONTRACT_VIEW_METHODS, TWENTY_FOUR } from "src/constants";
 import { CannotConnectError } from "src/error/cannotConectError";
 import { CannotDisconnectError } from "src/error/cannotDisconnectError";
+import { cannotFetchStoreError } from "src/error/cannotFetchStoreError";
+import { cannotMakeOfferError } from "src/error/cannotMakeOfferError";
 import { CannotTransferTokenError } from "src/error/cannotTransferTokenError";
 
 /** 
@@ -65,6 +67,65 @@ export class MintbaseWallet extends Wallet {
             throw CannotConnectError.becauseMintbaseLoginFail();
         }
     }
+
+    /**
+   * @description
+   * @param tokenId 
+   * @param price 
+   * @param storeId 
+   * @param options 
+   * @throws {cannotMakeOfferError} 
+   */
+  public async launchOffer(
+    tokenId: string,
+    price: string,
+    storeId?: string,
+    options?: OptionalMethodArgs & {
+      marketAddress?: string
+      timeout?: number
+    }
+  ): Promise<void> {
+
+    const account = this.activeWallet?.account()
+    const accountId = this.activeWallet?.account().accountId
+    const gas = MAX_GAS;
+    const timeout = options?.timeout || TWENTY_FOUR
+
+    if (!account || !accountId) throw cannotMakeOfferError.becauseUserNotFound();
+    if (!tokenId) throw cannotMakeOfferError.becauseTokenNotFound();
+    if (!storeId) throw cannotMakeOfferError.becauseStoreNotFound();
+
+    const contract = new Contract(
+      account,
+      options?.marketAddress ||
+      this.constants.MARKET_ADDRESS ||
+      `0.${this.constants.FACTORY_CONTRACT_NAME || FACTORY_CONTRACT_NAME}`,
+      {
+        viewMethods:
+          this.constants.MARKET_CONTRACT_VIEW_METHODS ||
+          MARKET_CONTRACT_VIEW_METHODS,
+        changeMethods:
+          this.constants.MARKET_CONTRACT_CALL_METHODS ||
+          MARKET_CONTRACT_CALL_METHODS,
+      }
+    )
+    try {
+        // @ts-ignore: method does not exist on Contract type
+        await contract.make_offer({
+            meta: options?.meta,
+            callbackUrl: options?.callbackUrl,
+            args: {
+            token_key: [tokenId + ":" + storeId], //  ["0:amber_v2.tenk.testnet"],
+            price: [price], // 1000000000000000000000000
+            timeout: [{ Hours: timeout }],
+            },
+            gas,
+            amount: price,
+        })
+    } catch (error) {
+        throw cannotMakeOfferError.becauseMintbaseError();
+    }
+  }
 
 
     /**
@@ -134,5 +195,19 @@ export class MintbaseWallet extends Wallet {
         } catch (error) {
             throw CannotTransferTokenError.becauseTransactionFails();
         }
+    }
+
+    /**
+   * @description
+   * @param storeId 
+   * @throws {cannotFetchStoreError}
+   */
+    public async fetchStoreById(
+        storeId: string
+    ): Promise<any>
+    {
+        const response = await this.api?.fetchStoreById(storeId);
+        if (response && response.data) return response.data;
+        else throw cannotFetchStoreError.becauseMintbaseError();
     }
 }

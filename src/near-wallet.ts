@@ -11,16 +11,10 @@ import {
   NetworkConfig,
   OptionalMethodArgs,
 } from './types'
-
 import {
-  FACTORY_CONTRACT_NAME,
   STORE_CONTRACT_VIEW_METHODS,
   STORE_CONTRACT_CALL_METHODS,
   TESTNET_CONFIG,
-  MAX_GAS,
-  TWENTY_FOUR,
-  MARKET_CONTRACT_VIEW_METHODS,
-  MARKET_CONTRACT_CALL_METHODS,
   MAINNET_CONFIG
 } from './constants';
 import { MintbaseGraphql } from './mintbase/mintbase-graphql';
@@ -33,6 +27,8 @@ import { MintbaseWallet } from './mintbase/mintbase-wallet';
 import { Network } from 'mintbase';
 import { CannotGetContractError } from './error/CannotGetContractError';
 import { CannotGetTokenError } from './error/CannotGetTokenError';
+import { cannotMakeOfferError } from './error/cannotMakeOfferError';
+import { cannotFetchStoreError } from './error/cannotFetchStoreError';
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near mintbase wallet 
@@ -249,9 +245,9 @@ export class NearWallet {
    * @param price 
    * @param storeId 
    * @param options 
-   * @returns 
+   * @throws {cannotMakeOfferError} 
    */
-  public async makeOffer(
+  public async offer(
     tokenId: string,
     price: string,
     storeId?: string,
@@ -259,45 +255,10 @@ export class NearWallet {
       marketAddress?: string
       timeout?: number
     }
-  ): Promise<any> {
-    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+  ): Promise<boolean> {
+    if(!this.mintbaseWallet) throw cannotMakeOfferError.becauseMintbaseNotConnected();
 
-    const account = this.mintbaseWallet.activeWallet?.account()
-    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
-    const gas = MAX_GAS;
-    const timeout = options?.timeout || TWENTY_FOUR
-
-    if (!account || !accountId) return 'Account is undefined.'
-    if (!tokenId) return 'Please provide a tokenId';
-    if (!storeId) return 'Must provide a storeId';
-
-    const contract = new Contract(
-      account,
-      options?.marketAddress ||
-      this.mintbaseWallet.constants.MARKET_ADDRESS ||
-      `0.${this.mintbaseWallet.constants.FACTORY_CONTRACT_NAME || FACTORY_CONTRACT_NAME}`,
-      {
-        viewMethods:
-          this.mintbaseWallet.constants.MARKET_CONTRACT_VIEW_METHODS ||
-          MARKET_CONTRACT_VIEW_METHODS,
-        changeMethods:
-          this.mintbaseWallet.constants.MARKET_CONTRACT_CALL_METHODS ||
-          MARKET_CONTRACT_CALL_METHODS,
-      }
-    )
-
-    // @ts-ignore: method does not exist on Contract type
-    await contract.make_offer({
-      meta: options?.meta,
-      callbackUrl: options?.callbackUrl,
-      args: {
-        token_key: [tokenId + ":" + storeId], //  ["0:amber_v2.tenk.testnet"],
-        price: [price], // 1000000000000000000000000
-        timeout: [{ Hours: timeout }],
-      },
-      gas,
-      amount: price,
-    })
+    await this.mintbaseWallet.launchOffer(tokenId, price, storeId, options);
 
     return true;
   }
@@ -366,7 +327,10 @@ export class NearWallet {
     else throw new Error('Marketplace cannot be accessed.')
   }
 
-  /** Search and retrieve your near store in mintbase platform */
+  /**
+   * @description Search and retrieve your near store in mintbase platform
+   * @returns 
+   */
   public async getMyStores() {
     const myStores = await this.mintbaseGraphql?.getStoreByOwner(this.account?.accountId);
     return myStores;
@@ -383,17 +347,18 @@ export class NearWallet {
 
 
   /**
+   * TODO: fix any type of return
    * @description
    * @param storeId 
-   * @returns 
+   * @throws {cannotFetchStoreError} 
    */
   public async fetchStoreById(
     storeId: string
-  ) {
-    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+  ): Promise<any>
+  {
+    if(!this.mintbaseWallet) throw cannotFetchStoreError.becauseMintbaseNotConnected();
 
-    const response = await this.mintbaseWallet.api?.fetchStoreById(storeId);
-    if (response) return response.data;
-    else throw new Error('Store cannot be accessed.')
+    const response = await this.mintbaseWallet.fetchStoreById(storeId);
+    return response;
   }
 }

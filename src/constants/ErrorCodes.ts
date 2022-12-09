@@ -28,4 +28,15 @@ export default {
         MINTBASE_NOT_CONNECTED: '0501',
         TIMEOUT_ERROR: '0502'
     },
+    MAKE_OFFER: {
+        USER_NOT_FOUND: '0601',
+        TOKEN_NOT_FOUND: '0602',
+        STORE_NOT_FOUND: '0603',
+        MINTBASE_NOT_CONNECTED: '0604',
+        MINTBASE_ERROR: '0605'
+    },
+    FETCH_STORE: {
+        MINTBASE_NOT_CONNECTED: '0701',
+        MINTBASE_ERROR: '0702'
+    },
 }
