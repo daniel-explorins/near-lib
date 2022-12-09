@@ -30,9 +30,9 @@ import { CannotGetTokenError } from './error/CannotGetTokenError';
 import { cannotMakeOfferError } from './error/cannotMakeOfferError';
 import { cannotFetchStoreError } from './error/cannotFetchStoreError';
 import { cannotGetThingsError } from './error/cannotGetThingsError';
-import { cannotGetMintersError } from './error/CANNOTgETmINTERSeRROR';
 import { cannotFetchMarketPlaceError } from './error/cannotFetchMarketPlaceError';
 import { GetStoreByOwner, GetTokensOfStoreId } from './graphql_types';
+import { cannotGetMintersError } from './error/cannotGetMintersError';
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near wallet 
@@ -243,8 +243,7 @@ export class NearWallet {
   ): Promise<void> 
   {
     if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
-    await this.mintbaseWallet?.transferToken(tokenId);
-
+    await this.mintbaseWallet.transferToken(tokenId);
   }
 
   /**

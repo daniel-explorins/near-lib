@@ -1,7 +1,15 @@
 import { Wallet } from "mintbase";
 import { Chain, Network, OptionalMethodArgs, WalletConfig } from "mintbase/lib/types";
 import { Contract } from "near-api-js";
-import { FACTORY_CONTRACT_NAME, MARKET_CONTRACT_CALL_METHODS, MARKET_CONTRACT_VIEW_METHODS, MAX_GAS, ONE_YOCTO, STORE_CONTRACT_CALL_METHODS, STORE_CONTRACT_VIEW_METHODS, TWENTY_FOUR } from "src/constants";
+import { 
+  FACTORY_CONTRACT_NAME,
+  MARKET_CONTRACT_CALL_METHODS,
+  MARKET_CONTRACT_VIEW_METHODS,
+  MAX_GAS,
+  ONE_YOCTO,
+  STORE_CONTRACT_CALL_METHODS,
+  STORE_CONTRACT_VIEW_METHODS,
+  TWENTY_FOUR } from "src/constants";
 import { CannotConnectError } from "src/error/cannotConectError";
 import { CannotDisconnectError } from "src/error/cannotDisconnectError";
 import { cannotFetchMarketPlaceError } from "src/error/cannotFetchMarketPlaceError";
@@ -177,7 +185,10 @@ export class MintbaseWallet extends Wallet {
     /**
      * @throws {CannotTransferTokenError}
      */
-    public transferToken(tokenId: string) {
+    public async transferToken(
+      tokenId: string
+    ): Promise<any>
+    {
         const account = this.activeWallet?.account()
         const accountId = this.activeWallet?.account().accountId;
         const contractName = this.activeNearConnection?.config.contractName;
