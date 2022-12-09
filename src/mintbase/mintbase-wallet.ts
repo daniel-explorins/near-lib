@@ -8,14 +8,15 @@ import {
   MAX_GAS,
   ONE_YOCTO,
   STORE_CONTRACT_CALL_METHODS,
+
   STORE_CONTRACT_VIEW_METHODS,
-  TWENTY_FOUR } from "src/constants";
-import { CannotConnectError } from "src/error/cannotConectError";
-import { CannotDisconnectError } from "src/error/cannotDisconnectError";
-import { cannotFetchMarketPlaceError } from "src/error/cannotFetchMarketPlaceError";
-import { cannotFetchStoreError } from "src/error/cannotFetchStoreError";
-import { cannotMakeOfferError } from "src/error/cannotMakeOfferError";
-import { CannotTransferTokenError } from "src/error/cannotTransferTokenError";
+  TWENTY_FOUR } from "./../constants";
+import { CannotConnectError } from "./../error/cannotConectError";
+import { CannotDisconnectError } from "./../error/cannotDisconnectError";
+import { cannotFetchMarketPlaceError } from "./../error/cannotFetchMarketPlaceError";
+import { cannotFetchStoreError } from "./../error/cannotFetchStoreError";
+import { cannotMakeOfferError } from "./../error/cannotMakeOfferError";
+import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications

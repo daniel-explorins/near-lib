@@ -4,8 +4,8 @@ import urlcat from 'urlcat';
 import { API_BASE_NEAR_TESTNET } from '../constants';
 import { storeGeneralQuery, thingGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
-import { MintbaseThing } from '@explorins/types';
 import { GetStoreByOwner, GetTokensOfStoreId } from 'src/graphql_types';
+import { MintbaseThing } from 'src/types';
 
 export class MintbaseGraphql {
 

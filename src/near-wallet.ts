@@ -6,6 +6,7 @@ import {
 } from 'near-api-js';
 
 import {
+  MintbaseThing,
   NearNetwork,
   NearWalletDetails,
   NetworkConfig,
@@ -19,7 +20,6 @@ import {
 } from './constants';
 import { MintbaseGraphql } from './mintbase/mintbase-graphql';
 import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
-import { MintbaseThing } from '@explorins/types';
 import { CannotConnectError } from './error/cannotConectError';
 import { CannotDisconnectError } from './error/cannotDisconnectError';
 import { CannotTransferTokenError } from './error/cannotTransferTokenError';
@@ -49,6 +49,7 @@ export class NearWallet {
   public isLogged$ = this._isLogged$.asObservable().pipe(shareReplay());
 
   public mintbaseGraphql: MintbaseGraphql | undefined;
+
 
   /** Name that give us access to contract */
   public contractName: string | undefined;
@@ -112,6 +113,7 @@ export class NearWallet {
    */
   public async connect(): Promise<void>
   {
+    console.log(' ************* this.mintbaseWallet ****************** ', this.mintbaseWallet)
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     if (this.mintbaseWallet.isConnected()) return;

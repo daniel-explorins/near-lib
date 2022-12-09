@@ -4,7 +4,7 @@ export class CannotGetTokenError extends Error {
     public code: string;
 
     constructor(code: string) {
-        super('Near lib error');
+        super(code);
         this.code = code;
     }
 
