@@ -1,10 +1,11 @@
 import { request, gql } from 'graphql-request'
 import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
-import { API_BASE_NEAR_TESTNET } from './constants';
-import { storeGeneralQuery, thingGeneralQuery } from './utils/graphQuery';
+import { API_BASE_NEAR_TESTNET } from '../constants';
+import { storeGeneralQuery, thingGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
-import { MintbaseThing } from '@explorins/types';
+import { GetStoreByOwner, GetTokensOfStoreId } from 'src/graphql_types';
+import { MintbaseThing } from 'src/types';
 
 export class MintbaseGraphql {
 
@@ -73,9 +74,10 @@ export class MintbaseGraphql {
 
   
 
-  public async getStoreByOwner(owner: string|undefined) {
-    if(!owner) throw new Error('Owner not provided.');
-
+  public async getStoreByOwner(
+    owner: string
+  ): Promise<GetStoreByOwner> 
+  {
     const query = gql`
     {
       store(where: {owner: {_eq: "${owner}"}}) {
@@ -85,8 +87,8 @@ export class MintbaseGraphql {
   `;
 
     const response = await this.custom( query ) as any;
-    console.log('getStoreByOwner response: ', response)
-    if(response) return response?.store;
+    
+    if(response && response.store) return response.store;
     else throw new Error('My store cannot be accessed.')
   }
 
@@ -180,7 +182,6 @@ export class MintbaseGraphql {
           query
         ) as any;
 
-      console.log('getStoreItems response: ', response);
       if(response) return response.thing;
       else throw new Error('My store cannot be accessed.')
     }
@@ -230,13 +231,13 @@ export class MintbaseGraphql {
     }
 
   /**
-   * 
+   * @description
    * @param storeId 
    * @returns 
    */
   public async getTokensOfStoreId(
     storeId: string
-  ) {
+  ): Promise<GetTokensOfStoreId>{
     const query = gql`
     {
       nft_tokens(where: {nft_contract_id: {_eq: "${storeId}"}}) {
@@ -249,9 +250,8 @@ export class MintbaseGraphql {
     }
     `;
     const response = await this.custom( query ) as any;
-    console.log('getTokensOfStoreId response: ', response)
   
-    if(response) return response.data?.nft_tokens;
+    if(response && response.data) return response.data?.nft_tokens;
     else throw new Error('Tokens cannot be accessed.')
   }
 
