@@ -33,6 +33,7 @@ import { cannotGetThingsError } from './error/cannotGetThingsError';
 import { cannotFetchMarketPlaceError } from './error/cannotFetchMarketPlaceError';
 import { GetStoreByOwner, GetTokensOfStoreId } from './graphql_types';
 import { cannotGetMintersError } from './error/cannotGetMintersError';
+import { NanostoreWallet } from './nanostore/nanostore-wallet';
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near wallet 
@@ -60,6 +61,8 @@ export class NearWallet {
   /** mintbaseWallet is the object that contains all mintbase methods and parameters */
   private mintbaseWallet: MintbaseWallet|null = null;
 
+  private nanostoreWallet: any;
+
   /** Show development helper logs */
   private logs: boolean = true;
 
@@ -74,13 +77,8 @@ export class NearWallet {
     private apiKey: string,
     public networkName: string = NearNetwork.mintbase_testnet
   ) {
+    // MintbaseWallet is required for use this library
     switch (networkName) {
-      case NearNetwork.mainnet:
-        this.networkConfig = MAINNET_CONFIG;
-        break;
-      case NearNetwork.testnet:
-        this.networkConfig = TESTNET_CONFIG;
-        break;
       case NearNetwork.mintbase_mainnet:
         this.mintbaseWallet = new MintbaseWallet(apiKey, Network.mainnet);
         break;
@@ -90,6 +88,17 @@ export class NearWallet {
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
+
+    this.nanostoreWallet = new NanostoreWallet();
+
+  }
+
+  public pruebas() {
+    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+    
+    const account = this.mintbaseWallet.activeWallet.account();
+    console.log('La account: ', account);
+    this.nanostoreWallet.connect(account);
   }
 
   /**
@@ -105,7 +114,7 @@ export class NearWallet {
       const { data: details } = await this.mintbaseWallet.details();
       console.log('Setting Data !! ')
       const contractName = details.contractName;
-      const account = this.mintbaseWallet.activeWallet?.account();
+      const account = this.mintbaseWallet.activeWallet.account();
       this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
     
       return {details, contractName, account};
