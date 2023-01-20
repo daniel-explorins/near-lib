@@ -116,7 +116,10 @@ export class NearWallet {
     console.log(' ************* this.mintbaseWallet ****************** ', this.mintbaseWallet)
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
-    if (this.mintbaseWallet.isConnected()) return;
+    if (this.mintbaseWallet.isConnected()) {
+      this._isLogged$.next(true);
+      return;
+    }
     
     try {
       // If the wallet is not connected, we go to the connection page
@@ -193,12 +196,20 @@ export class NearWallet {
 
   /**
    * TODO: check retryFetch logic
-   * @description Returns the things that belong to the connected use
-   * @param intent 
+   * @description Returns the things that belong to the connected user
+   * @param {int} intent we intent to get things max 20 times
    * 
-   * @throws {CannotGetTokenError} If mintbase not found or timeout error
+   * @throws {CannotGetTokenError} code: 501. If mintbase not found
+   * @throws {CannotGetTokenError} code: 502. If timeout error
+   * @throws {CannotGetTokenError} code: 503. If mintbase error 
+   * @returns {Promise<MintbaseThing[]>}
    */
-  public async getTokenFromCurrentWallet(intent = 0): Promise<MintbaseThing[] | undefined> {
+  public async getTokenFromCurrentWallet( 
+    intent = 0
+  ): Promise<MintbaseThing[] | undefined>
+  {
+    console.log('Pruebas ........................', intent);
+
     if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
 
     intent++
@@ -211,12 +222,16 @@ export class NearWallet {
       const response = await this.mintbaseGraphql?.getWalletThings(accountId);
 
       if (response === undefined && intent < 20) {
+        // Do a timeout await
         await firstValueFrom(timer(intent * 5000))
         return this.getTokenFromCurrentWallet(intent)
-      }
+      } else if(intent >= 20) {
+        throw CannotGetTokenError.becauseTimeoutError();
+      } 
       return response;
+
     } catch (error) {
-      throw CannotGetTokenError.becauseTimeoutError();
+      throw CannotGetTokenError.becauseMintbaseError();
     }
   }
 

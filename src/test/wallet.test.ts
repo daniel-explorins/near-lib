@@ -7,7 +7,9 @@ import { thingByIdMock } from './mocks';
 export const graphqlNearMock = nock(`${API_BASE_NEAR_TESTNET}/v1/graphql`);
 export const arweaveMock = nock('https://arweave.net');
 
-
+/**
+ * Tests pending definition and development
+ */
 describe('api', () => {
     const Graphql = new MintbaseGraphql();
   

@@ -26,7 +26,8 @@ export default {
     },
     GET_TOKEN: {
         MINTBASE_NOT_CONNECTED: '0501',
-        TIMEOUT_ERROR: '0502'
+        TIMEOUT_ERROR: '0502',
+        MINTBASE_ERROR: '0503'
     },
     MAKE_OFFER: {
         USER_NOT_FOUND: '0601',
