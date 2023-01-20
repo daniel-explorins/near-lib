@@ -73,20 +73,12 @@ export class MintbaseWallet extends Wallet {
      * @description Initialize the mintbase wallet, this method must be called on app initialization
      * @throws {CannotConnectError} If user is not currently logged in mintbase wallet
      */
-    public async mintbaseLogin(): Promise<void>
-    {
+    public async loggedOrFail(): Promise<void> {
         let isConnected;
-
-        try {
-        
-            const { data: walletData } = await this.init(
-                this.mintbaseWalletConfig
-            );
-            isConnected  = walletData.isConnected;
-
-        } catch (error) {
-            throw CannotConnectError.becauseMintbaseLoginFail();
-        }
+        const { data: walletData } = await this.init(
+            this.mintbaseWalletConfig
+        );
+        isConnected  = walletData.isConnected;
 
         if (!isConnected) {
             throw CannotConnectError.becauseMintbaseLoginFail();

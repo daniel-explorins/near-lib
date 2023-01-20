@@ -64,6 +64,8 @@ export class NearWallet {
   private logs: boolean = true;
 
   /**
+   * @MF TODO: Move initialization from constructor to static public method
+   * ------------------------------------------------------------------------------------
    * @param {string} apiKey - mintbase apikey 
    * @param {Network} networkName - default value is 'testnet', mintbase_testnet
    * @throws {CannotConnectError} if network is unrecognized
@@ -92,15 +94,21 @@ export class NearWallet {
 
   /**
    * @description It is simply a bridge to the details of the wallet
-   * @returns {NearWalletDetails} get details stored in mintbase connection object
+   * ------------------------------------------------------------------------------------
+   * @returns {{details: NearWalletDetails}} get details stored in mintbase connection object
    * @throws {CannotConnectError} If dont have mintbase wallet or mintbase lib method throws an exception
    */
-  public async getDetails(): Promise<NearWalletDetails> {
+  public async getMintbaseAccountData(): Promise<{details: NearWalletDetails}> {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     try {
       const { data: details } = await this.mintbaseWallet.details();
-      return details;
+      console.log('Setting Data !! ')
+      const contractName = details.contractName;
+      const account = this.mintbaseWallet.activeWallet?.account();
+      this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
+    
+      return {details, contractName, account};
     } catch (error) {
       throw CannotConnectError.becauseMintbaseError();
     }
@@ -109,6 +117,7 @@ export class NearWallet {
   /**
    * @description Usually this method must be called on login button action
    * @description Currently making a connection to the mintbase wallet
+   * ------------------------------------------------------------------------------------
    * @throws {CannotConnectError} if connection to mintbase could not be made
    */
   public async connect(): Promise<void>
@@ -132,6 +141,7 @@ export class NearWallet {
 
   /**
    * @description return near contract that is being used
+   * ------------------------------------------------------------------------------------
    * @throws {CannotGetContractError} if account or contractName not found
    */
   public getContract() {
@@ -157,46 +167,49 @@ export class NearWallet {
   }
 
   /**
-   * TODO: change this method name to more generic: nearLogin
-   * @description We use the mintbase object to retrieve actual connection so we can use its methods and properties
-   * @description Set local variables to work with mintbase connection
-   * @description This method must be called on app initialization or refresh
+   * @description set account info from mintbase connection
+   * ------------------------------------------------------------------------------------
    * @throws {CannotConnectError} code: 0102. If user currently not logged to near wallet
    * @throws {CannotConnectError} code: 0105. If cannot retrieve wallet details from mintbase user or uncatched mintabse error.
    */
+  public async setMintbaseData(): Promise<void> {
+    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+    
+  }
+
+  // @TODO legacy method, deprecate it
   public async mintbaseLogin(): Promise<void> {
+    return this.mintbaseLoggedOrFail();
+  }
+
+  /**
+   * @description Check if we are already logged on mintbase
+   * @description We use the mintbase object to retrieve actual connection so we can use its methods and properties
+   * @description Set local variables to work with mintbase connection
+   * @description This method must be called on app initialization or refresh
+   * ------------------------------------------------------------------------------------
+   * @throws {CannotConnectError} code: 0102. If user currently not logged to near wallet
+   * @throws {CannotConnectError} code: 0105. If cannot retrieve wallet details from mintbase user or uncatched mintabse error.
+   */
+  public async mintbaseLoggedOrFail(): Promise<void> {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
 
     try {
-      await this.mintbaseWallet.mintbaseLogin();
+      await this.mintbaseWallet.loggedOrFail();
+      // @MF TODO: quizás moverlo a un setup ?
+      this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
     } catch (error) {
       this._isLogged$.next(false);
       if(error instanceof CannotConnectError) throw error;
       else throw CannotConnectError.becauseMintbaseError();
     }
-
     this._isLogged$.next(true);
-    
-    try {
-      const { data: details } = await this.mintbaseWallet.details();
-      this.contractName = details.contractName;
-      this.account = this.mintbaseWallet.activeWallet?.account();
-      this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
-    } catch (error) {
-      throw CannotConnectError.becauseMintbaseError();
-    }
-       
-    // show development helper logs
-    if (this.logs) {
-      console.log('----------------------------------------------------- NEAR INFO ------------------------ ');
-      console.log('Account: ', this.account);
-      console.log('El wallet: ', this.mintbaseWallet);
-    }
   }
 
   /**
    * TODO: check retryFetch logic
    * @description Returns the things that belong to the connected user
+   * ------------------------------------------------------------------------------------
    * @param {int} intent we intent to get things max 20 times
    * 
    * @throws {CannotGetTokenError} code: 501. If mintbase not found
@@ -208,8 +221,6 @@ export class NearWallet {
     intent = 0
   ): Promise<MintbaseThing[] | undefined>
   {
-    console.log('Pruebas ........................', intent);
-
     if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
 
     intent++
@@ -237,6 +248,7 @@ export class NearWallet {
 
   /**
    * @description Do mintbase signOut, clean local variables and update logged observable
+   * ------------------------------------------------------------------------------------
    * @throws {CannotDisconnectError} if mintbase signout method fails
    */
   public disconnect(): void 
@@ -250,7 +262,8 @@ export class NearWallet {
 
 
   /**
-   * @description Transfer one token inside mintbase wallet. 
+   * @description Transfer one token inside mintbase wallet.
+   * ------------------------------------------------------------------------------------
    * @description This method depends on STORE_CONTRACT_CALL_METHODS and STORE_CONTRACT_VIEW_METHODS ,  twice mintbase constants
    * @param {string} tokenId The token id to transfer.
    * @throws {CannotTransferTokenError}
@@ -266,6 +279,7 @@ export class NearWallet {
   /**
    * TODO: change the method name to more descriptive: getMyStoreThings
    * @description -
+   * ------------------------------------------------------------------------------------
    * @param myStoreId 
    * @throws {cannotGetThingsError}
    */
@@ -306,6 +320,7 @@ export class NearWallet {
    * TODO: Este método "list_minters" está en la documentación de mintbase, pero no existe ??
    * TODO: improve any return
    * @description Call the contract method list_minters
+   * ------------------------------------------------------------------------------------
    * @throws {cannotGetMintersError} code: 0901. If some of the mandatory params not found
    * @throws {cannotGetMintersError} code: 0903. If contract method fails
    */
@@ -338,6 +353,7 @@ export class NearWallet {
 
   /**
    * @description It is a bridge to use the native function of mintbase
+   * ------------------------------------------------------------------------------------
    * @param limit number of results
    * @param offset number of records to skip
    * @throws {cannotFetchMarketPlaceError}
@@ -354,6 +370,7 @@ export class NearWallet {
   /**
    * TODO: improve any return
    * @description It is a bridge to use the native function of mintbase
+   * ------------------------------------------------------------------------------------
    * @param limit number of results
    * @param offset number of records to skip
    * @throws {cannotFetchStoreError} code: 0701. If internal mintbaseWallet was not found
@@ -372,6 +389,7 @@ export class NearWallet {
   /**
    * TODO: improve any return
    * @description Search and retrieve your near store in mintbase platform
+   * ------------------------------------------------------------------------------------
    * @throws {cannotFetchStoreError} code: 0701. If some of the mandatory params was not found
    * @throws {cannotFetchStoreError} code: 0703. If graphql error
    */
@@ -387,6 +405,7 @@ export class NearWallet {
 
   /**
    * @description
+   * ------------------------------------------------------------------------------------
    * @param storeId 
    * @throws {cannotFetchStoreError} code: 0701. If internal mintbaseGraphql object was not found
    * @throws {cannotFetchStoreError} code: 0703. If graphql error
@@ -404,10 +423,10 @@ export class NearWallet {
     }
   }
 
-
   /**
    * TODO: improve any return
    * @description It is a bridge to use the native function of mintbase
+   * ------------------------------------------------------------------------------------
    * @param storeId 
    * @throws {cannotFetchStoreError} code: 0701. If internal mintbaseWallet object was not found
    * @throws {cannotFetchStoreError} code: 0702. If internal mintbase api throws error
