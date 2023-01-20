@@ -93,12 +93,17 @@ export class NearWallet {
 
   }
 
-  public pruebas() {
+  public async pruebas() {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     const account = this.mintbaseWallet.activeWallet.account();
     console.log('La account: ', account);
-    this.nanostoreWallet.connect(account);
+    try {
+      // this.nanostoreWallet.printableNftMint(account);
+    } catch (error) {
+      console.log('Thre is an error: ', error);
+    }
+    
   }
 
   /**

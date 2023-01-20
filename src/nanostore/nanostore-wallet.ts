@@ -49,7 +49,7 @@ export class NanostoreWallet {
      * ------------------------------------------------------------------------------------
      * @param {ConnectedWalletAccount} account
      */
-    public async mintNft(account: ConnectedWalletAccount): Promise<void> {
+    public async printableNftMint(account: ConnectedWalletAccount): Promise<void> {
       try {
         const contract = new Contract(
           account, 
@@ -60,10 +60,24 @@ export class NanostoreWallet {
           }
         );
         
-        await contract.batch_mint();
+        await contract.nft_batch_mint({
+          meta: null,
+          callbackUrl: "",
+          args: {
+            "owner_id": "nanostore.eurega.testnet",
+            "metadata": {
+              "title":"nanostore prueba 2",
+              "description":"nanostore prueba1 description"
+            },
+            "royalty_args": null,
+            "num_to_mint":3
+          },
+          gas: MAX_GAS,
+          amount: ONE_YOCTO,
+        });
         
       } catch (error) {
-        console.log('a error ocurred !');
+        console.log('a error ocurred !', error);
       }
     }
 
