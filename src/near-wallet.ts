@@ -59,7 +59,7 @@ export class NearWallet {
   public account: ConnectedWalletAccount | undefined;
 
   /** mintbaseWallet is the object that contains all mintbase methods and parameters */
-  private mintbaseWallet: MintbaseWallet|null = null;
+  private mintbaseWallet: MintbaseWallet;
 
   private nanostoreWallet: any;
 
@@ -96,8 +96,8 @@ export class NearWallet {
   public async pruebas() {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
-    const account = this.mintbaseWallet.activeWallet.account();
-    console.log('La account: ', account);
+    const account = this.mintbaseWallet.activeWallet?.account();
+    console.log('La account: ', account)
     try {
       // this.nanostoreWallet.printableNftMint(account);
     } catch (error) {
@@ -112,7 +112,7 @@ export class NearWallet {
    * @returns {{details: NearWalletDetails}} get details stored in mintbase connection object
    * @throws {CannotConnectError} If dont have mintbase wallet or mintbase lib method throws an exception
    */
-  public async getMintbaseAccountData(): Promise<{details: NearWalletDetails}> {
+  public async getMintbaseAccountData(): Promise<{details: NearWalletDetails, contractName: string, account: any}> {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     try {
@@ -218,6 +218,24 @@ export class NearWallet {
       else throw CannotConnectError.becauseMintbaseError();
     }
     this._isLogged$.next(true);
+  }
+
+  /**
+     * @description Retrieve account that is logged in mintbase
+     * ------------------------------------------------------------------------------------
+     * @throws {CannotConnectError} code: 0102. If user currently not logged to near wallet
+     * @throws {CannotConnectError} code: 0105. If cannot retrieve wallet details from mintbase user or uncatched mintabse error.
+   */
+  public getMintbaseConnectedAccount() {
+    if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
+    try {
+      const account = this.mintbaseWallet.activeWallet?.account()
+      const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+      console.log('Getting account for: ', accountId);
+      return account;
+  } catch (error) {
+      throw CannotConnectError.becauseMintbaseError();
+  }
   }
 
   /**

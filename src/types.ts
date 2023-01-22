@@ -1,4 +1,4 @@
-import { MetadataField, Constants, MintMetadata, Royalties, Token, Network } from 'mintbase';
+import { MetadataField, Constants, MintMetadata, Royalties, Token } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 
 /** Lib only works with near */
@@ -6,6 +6,10 @@ export enum Chain {
   near = 'near',
 }
 
+export enum Network {
+  mainnet = 'mainnet',
+  testnet = 'testnet',
+}
 export interface NetworkConfig {
   networkId: string,
   nodeUrl: string
@@ -83,9 +87,21 @@ type OptionalMethodArgs = {
   callbackUrl?: string
 }
 
-type WalletConnectProps = {
-  successUrl?: string
-  failureUrl?: string
+interface NEARConfig {
+  networkId: string
+  nodeUrl: string
+  contractName: string
+  walletUrl: string
+  helperUrl: string
+}
+
+type ConstructNearWalletParams = {
+  network: Network,
+  contractAddress: string
+  accountId: string,
+  successUrl?: string,
+  failureUrl?: string,
+  privateKey?: string // useful for node environment
 }
 
 type NearTransaction = Transaction & {
@@ -150,7 +166,8 @@ export {
   NearRoyalties,
   CloudStorageConstants,
   OptionalMethodArgs,
-  WalletConnectProps,
+  NEARConfig,
+  ConstructNearWalletParams,
   NearTransaction,
   NearNetwork
 }
