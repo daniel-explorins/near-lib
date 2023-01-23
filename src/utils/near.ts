@@ -1,4 +1,4 @@
-import { NEARConfig, Network } from "./../types"
+import { NEARConfig, NearNetwork, Network } from "./../types"
 
 /**
  * Get NEAR configuration object. Defaults to testnet.
@@ -6,11 +6,11 @@ import { NEARConfig, Network } from "./../types"
  * @param contractAddress
  */
 export const getNearConfig = (
- networkName: Network,
+ networkName: NearNetwork|Network,
  contractAddress: string
 ): NEARConfig => {
  switch (networkName) {
-   case Network.testnet:
+   case NearNetwork.testnet:
      return {
        networkId: 'testnet',
        nodeUrl: 'https://rpc.testnet.near.org',
@@ -19,7 +19,7 @@ export const getNearConfig = (
        helperUrl: 'https://helper.testnet.near.org',
      }
 
-   case Network.mainnet:
+   case NearNetwork.mainnet:
      return {
        networkId: 'mainnet',
        nodeUrl: 'https://rpc.mainnet.near.org',

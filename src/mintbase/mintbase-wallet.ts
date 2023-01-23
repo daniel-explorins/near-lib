@@ -1,7 +1,13 @@
-import { Wallet } from "mintbase";
+import { isBrowser } from "browser-or-node";
+import { API, Wallet } from "mintbase";
 import { Chain, Network, OptionalMethodArgs, WalletConfig } from "mintbase/lib/types";
-import { Contract } from "near-api-js";
+import { formatResponse, ResponseData } from "mintbase/lib/utils/responseBuilder";
+import { connect, Contract, keyStores, WalletAccount } from "near-api-js";
+import { BehaviorSubject } from "rxjs";
+import { MintbaseWalletConfig } from "./../types";
+import { initializeExternalConstants } from "./../utils/external-constants";
 import { 
+  CLOUD_URI,
   FACTORY_CONTRACT_NAME,
   MARKET_CONTRACT_CALL_METHODS,
   MARKET_CONTRACT_VIEW_METHODS,
@@ -17,43 +23,102 @@ import { cannotFetchMarketPlaceError } from "./../error/cannotFetchMarketPlaceEr
 import { cannotFetchStoreError } from "./../error/cannotFetchStoreError";
 import { cannotMakeOfferError } from "./../error/cannotMakeOfferError";
 import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
+import * as utils from './../utils/near';
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
  */
 export class MintbaseWallet extends Wallet {
-
-    /** Configuration object to login in mintbase */
-    private mintbaseWalletConfig: WalletConfig;
-
+  
     public constructor(
-        private apiKey: string,
-        public networkName: Network
+        public walletConfig: MintbaseWalletConfig & {contractName: string}
     ) {
         super();
+        if(!isBrowser) throw new Error('Only supports browser');
+        if(walletConfig.networkName != Network.mainnet && walletConfig.networkName != Network.testnet) throw new Error('unsupported network');
+      }
 
-        let network;
+    /**
+     * @description This method initializes mintbase factory contract wallet object in a custom way
+     * @set 
+     * api: @Api de Mintbase, ver si realmente se usa
+     * constants
+     * networkname: mainnet o testnet
+     * chain: Solo usamos near
+     * nearConfig: Se usa para conectar con near::connect()
+     * activeNearConnection: Object devuelto por near::connect()
+     * keyStore: Usamos browser local storage
+     * activeWallet: Es el objeto WalletAccount
+     * ----------------------------------------------------------
+     * @param walletConfig 
+     * @returns 
+     */
+    public async init(
+      walletConfig: MintbaseWalletConfig & {contractName: string}
+    ): Promise<ResponseData<{ wallet: Wallet; isConnected: boolean }>> {
+      
+      try {
+        this.constants = await initializeExternalConstants({
+          apiKey: walletConfig.apiKey,
+          networkName: walletConfig.networkName,
+        })
+  
+        this.api = new API({
+          networkName: walletConfig.networkName,
+          chain: Chain.near,
+          constants: this.constants,
+        })
+  
+        this.networkName = walletConfig.networkName;
+        // this lib only supports near
+        this.chain = Chain.near;
+        this.nearConfig = utils.getNearConfig(
+          walletConfig.networkName, 
+          walletConfig.contractName
+        );
+        this.keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
-        switch (networkName) {
-            case Network.mainnet:
-              network = Network.mainnet;
-              break;
-            case Network.testnet:
-              network = Network.testnet;
-              break;
-            default:
-              throw CannotConnectError.becauseUnsupportedNetwork();
+        
+          const connectConfig = {
+          deps: { keyStore: new keyStores.BrowserLocalStorageKeyStore() },
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          ...this.nearConfig
           }
+        
+        const near = await connect(connectConfig);
+        this.activeNearConnection = near;
+        this.activeWallet = new WalletAccount(near, 'nanostore');
+        
+        /* @TODO Para que se usa este objeto ? Es necesario ?
 
-        this.mintbaseWalletConfig = {
-            networkName: network,
-            chain: Chain.near,
-            apiKey: this.apiKey,
-          };
+        this.minter = new Minter({
+          apiKey: walletConfig.apiKey,
+          constants: this.constants,
+        })
+
+        */
+        
+        // We only want to init, not connect yet
+        // await this.connect()
+
+        // We must return this format because we extend mintbase method
+        const data = { wallet: this, isConnected: false };
+        return formatResponse({
+          data,
+        })
+
+      } catch (error: any) {
+        // @TODO throw custom error
+        throw error;
+      }
     }
 
   /**
+   * @description 
+   * ---------------------------------------------------
    * @param limit number of results
    * @param offset number of records to skip
    * @throws {cannotFetchMarketPlaceError}
@@ -66,23 +131,6 @@ export class MintbaseWallet extends Wallet {
       const response = await this.api?.fetchMarketplace(offset, limit);
       if (response) return response.data;
       else throw cannotFetchMarketPlaceError.becauseMintbaseError();
-    }
-
-
-    /**
-     * @description Initialize the mintbase wallet, this method must be called on app initialization
-     * @throws {CannotConnectError} If user is not currently logged in mintbase wallet
-     */
-    public async loggedOrFail(): Promise<void> {
-        let isConnected;
-        const { data: walletData } = await this.init(
-            this.mintbaseWalletConfig
-        );
-        isConnected  = walletData.isConnected;
-
-        if (!isConnected) {
-            throw CannotConnectError.becauseMintbaseLoginFail();
-        }
     }
 
     /**
@@ -142,6 +190,13 @@ export class MintbaseWallet extends Wallet {
     } catch (error) {
         throw cannotMakeOfferError.becauseMintbaseError();
     }
+  }
+
+  /**
+   * @description
+   */
+  public getConnectionInfo() {
+    return this.activeNearConnection ;
   }
 
 

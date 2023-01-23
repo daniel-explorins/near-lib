@@ -1,19 +1,18 @@
 import { request, gql } from 'graphql-request'
 import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
-import { API_BASE_NEAR_TESTNET } from '../constants';
 import { storeGeneralQuery, thingGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
 import { GetStoreByOwner, GetTokensOfStoreId } from 'src/graphql_types';
-import { MintbaseThing } from 'src/types';
+import { MintbaseThing } from './../types';
 
 export class MintbaseGraphql {
 
   public apiBaseUrl: string;
 
 
-  constructor(apiBaseUrl?: string) {
-    this.apiBaseUrl = apiBaseUrl ?? API_BASE_NEAR_TESTNET;
+  constructor(apiBaseUrl: string) {
+    this.apiBaseUrl = apiBaseUrl;
   }
 
   /**
@@ -243,15 +242,12 @@ export class MintbaseGraphql {
       nft_tokens(where: {nft_contract_id: {_eq: "${storeId}"}}) {
         metadata_id
         token_id
-        nft_listings {
-          price
-        }
       }
     }
     `;
     const response = await this.custom( query ) as any;
   
-    if(response && response.data) return response.data?.nft_tokens;
+    if(response && response.nft_tokens) return response.nft_tokens;
     else throw new Error('Tokens cannot be accessed.')
   }
 

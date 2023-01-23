@@ -12,11 +12,29 @@ First we create an instance to our wallet
 import { NearWallet } from '@explorins/near-lib';
 
     const wallet = new NearWallet(
-      MINTBASE_API_KEY,
-      'mintbase_testnet'
+        {
+            MINTBASE_API_KEY,
+            'testnet'
+        }
     );
 ```
-
+Now web can subscribe to wallet logged observable
+``` typescript
+    $logginObservable = wallet.isLogged$;
+    $logginObservable.subscribe((logged:boolean) => {
+        ...
+    })
+```
+Next we must to init our wallet object
+``` typescript
+    await wallet.init();
+```
+After init if we are previously logged, we can recover the loggin state and actuate accordingly in the app
+``` typescript
+    $logginObservable.subscribe((logged:boolean) => {
+        if(logged) console.log('Already logged in');
+    })
+```
 If you are not connected to your wallet you must link the login button to the following action 
 
 ```typescript

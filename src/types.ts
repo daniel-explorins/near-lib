@@ -6,6 +6,7 @@ export enum Chain {
   near = 'near',
 }
 
+
 export enum Network {
   mainnet = 'mainnet',
   testnet = 'testnet',
@@ -32,10 +33,10 @@ interface CloudStorageConstants {
   storageBucket: string
 }
 
-export interface WalletConfig {
+export interface MintbaseWalletConfig {
   apiKey: string
-  chain?: Chain
-  networkName?: Network
+  chain: Chain
+  networkName: Network
 }
 
 interface NearWalletDetails {
@@ -96,9 +97,10 @@ interface NEARConfig {
 }
 
 type ConstructNearWalletParams = {
-  network: Network,
+  network: NearNetwork,
   contractAddress: string
   accountId: string,
+  apiKey: string, // useful for node environment
   successUrl?: string,
   failureUrl?: string,
   privateKey?: string // useful for node environment

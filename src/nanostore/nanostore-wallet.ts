@@ -1,5 +1,5 @@
 import { Contract, ConnectedWalletAccount, keyStores, connect, Near, WalletAccount, ConnectConfig, KeyPair, Account } from "near-api-js";
-import { ConstructNearWalletParams, NEARConfig } from "src/types";
+import { ConstructNearWalletParams, NEARConfig } from "./../types";
 import { 
   MAX_GAS,
   ONE_YOCTO,
@@ -27,10 +27,10 @@ export class NanostoreWallet {
 
     public activeAccount: Account|null = null;
 
-    private nearConfig: NEARConfig;
+    private nearWalletConfig: NEARConfig;
 
     /** Internal subject that stores login state */
-    private _isLogged$ = new BehaviorSubject(false);
+    public _isLogged$ = new BehaviorSubject(false);
 
     /** External public observable to login state */
     public isLogged$ = this._isLogged$.asObservable().pipe(shareReplay());
@@ -39,27 +39,31 @@ export class NanostoreWallet {
       props: ConstructNearWalletParams
     ) { 
       // Setting config object
-      this.nearConfig = utils.getNearConfig(props.network, props.contractAddress);  
+      this.nearWalletConfig = utils.getNearConfig(
+        props.network, 
+        props.contractAddress
+      );  
       this.properties = props;
     }
 
     /**
-     * @description
+     * @description This method initializes nanostore contract wallet object
+     * @set 
+     * connectConfig: 
+     * activeNearConnection
      * ------------------------------------------------------------------------------------
      */
     public async init() {
-        if (isBrowser) {
-            this.connectConfig = {
+        if (!isBrowser) throw new Error('Node connection is not permited yet');
+        const connectConfig = {
             deps: { keyStore: new keyStores.BrowserLocalStorageKeyStore() },
             headers: {
                 'Content-Type': 'application/json',
             },
-            ...this.nearConfig
-            }
-        } else  {
-            throw new Error('Node connection is not permited yet');
+            ...this.nearWalletConfig
         }
-        const near = await connect(this.connectConfig);
+        
+        const near = await connect(connectConfig);
         this.activeNearConnection = near;
         this.activeWallet = new WalletAccount(near, 'nanostore');
 

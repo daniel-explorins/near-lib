@@ -9,6 +9,7 @@ import {
   MintbaseThing,
   NearNetwork,
   NearWalletDetails,
+  Network,
   NetworkConfig,
   OptionalMethodArgs,
 } from './types'
@@ -16,7 +17,9 @@ import {
   STORE_CONTRACT_VIEW_METHODS,
   STORE_CONTRACT_CALL_METHODS,
   TESTNET_CONFIG,
-  MAINNET_CONFIG
+  MAINNET_CONFIG,
+  MINTBASE_GRAPHQL_TESTNET,
+  FACTORY_CONTRACT_NAME
 } from './constants';
 import { MintbaseGraphql } from './mintbase/mintbase-graphql';
 import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
@@ -24,7 +27,6 @@ import { CannotConnectError } from './error/cannotConectError';
 import { CannotDisconnectError } from './error/cannotDisconnectError';
 import { CannotTransferTokenError } from './error/cannotTransferTokenError';
 import { MintbaseWallet } from './mintbase/mintbase-wallet';
-import { Network } from 'mintbase';
 import { CannotGetContractError } from './error/CannotGetContractError';
 import { CannotGetTokenError } from './error/CannotGetTokenError';
 import { cannotMakeOfferError } from './error/cannotMakeOfferError';
@@ -34,6 +36,8 @@ import { cannotFetchMarketPlaceError } from './error/cannotFetchMarketPlaceError
 import { GetStoreByOwner, GetTokensOfStoreId } from './graphql_types';
 import { cannotGetMintersError } from './error/cannotGetMintersError';
 import { NanostoreWallet } from './nanostore/nanostore-wallet';
+import { Chain } from 'mintbase';
+import { getGraphQlUri } from './utils/graphQl';
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near wallet 
@@ -51,7 +55,6 @@ export class NearWallet {
 
   public mintbaseGraphql: MintbaseGraphql | undefined;
 
-
   /** Name that give us access to contract */
   public contractName: string | undefined;
 
@@ -67,65 +70,59 @@ export class NearWallet {
   private logs: boolean = true;
 
   /**
-   * @MF TODO: Move initialization from constructor to static public method
+   * @MF TODO: Move initialization from constructor to static public method ?
+   * @description The constructor only sets three variables: apiKey, networkName and mintbaseWallet
    * ------------------------------------------------------------------------------------
    * @param {string} apiKey - mintbase apikey 
-   * @param {Network} networkName - default value is 'testnet', mintbase_testnet
+   * @param {Network} networkName - default value is 'testnet'
    * @throws {CannotConnectError} if network is unrecognized
    */
   public constructor(
     private apiKey: string,
-    public networkName: string = NearNetwork.mintbase_testnet
+    public networkName: NearNetwork = NearNetwork.testnet
   ) {
     // MintbaseWallet is required for use this library
+    // First of all we set mintbaseWalletConfig
     switch (networkName) {
-      case NearNetwork.mintbase_mainnet:
-        this.mintbaseWallet = new MintbaseWallet(apiKey, Network.mainnet);
+      case NearNetwork.mainnet:
+          this.mintbaseWallet = new MintbaseWallet({apiKey, networkName: Network.mainnet, chain: Chain.near, contractName: FACTORY_CONTRACT_NAME});
+          // this.nanostoreWallet = new NanostoreWallet(); 
         break;
-      case NearNetwork.mintbase_testnet:
-        this.mintbaseWallet = new MintbaseWallet(apiKey, Network.testnet);
+      case NearNetwork.testnet:
+          this.mintbaseWallet = new MintbaseWallet({apiKey, networkName: Network.testnet, chain: Chain.near, contractName: FACTORY_CONTRACT_NAME});
         break;
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
 
-    this.nanostoreWallet = new NanostoreWallet();
-
-  }
-
-  public async pruebas() {
-    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
-    
-    const account = this.mintbaseWallet.activeWallet?.account();
-    console.log('La account: ', account)
-    try {
-      // this.nanostoreWallet.printableNftMint(account);
-    } catch (error) {
-      console.log('Thre is an error: ', error);
-    }
-    
   }
 
   /**
-   * @description It is simply a bridge to the details of the wallet
+   * @description initializes mintbase wallet custom object and sets graphql object
+   * @description sets logged observable state
    * ------------------------------------------------------------------------------------
-   * @returns {{details: NearWalletDetails}} get details stored in mintbase connection object
-   * @throws {CannotConnectError} If dont have mintbase wallet or mintbase lib method throws an exception
    */
-  public async getMintbaseAccountData(): Promise<{details: NearWalletDetails, contractName: string, account: any}> {
+  public async init(): Promise<void> {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     try {
-      const { data: details } = await this.mintbaseWallet.details();
-      console.log('Setting Data !! ')
-      const contractName = details.contractName;
-      const account = this.mintbaseWallet.activeWallet.account();
-      this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
-    
-      return {details, contractName, account};
+      await this.mintbaseWallet.init(this.mintbaseWallet.walletConfig);
     } catch (error) {
-      throw CannotConnectError.becauseMintbaseError();
+        console.log('Init error: ', error);
     }
+
+    if(!this.mintbaseWallet.activeWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+    
+    if(this.mintbaseWallet.activeWallet.isSignedIn()) {
+        this._isLogged$.next(true);
+        this.mintbaseGraphql = new MintbaseGraphql(getGraphQlUri(this.networkName));
+    } else {
+        this._isLogged$.next(false);
+    }
+    // await this.nanostoreWallet.connect();
+    // const minters = await this.nanostoreWallet.getMinters();
+    // console.log('los minters: ', minters);
+    
   }
 
   /**
@@ -136,11 +133,11 @@ export class NearWallet {
    */
   public async connect(): Promise<void>
   {
-    console.log(' ************* this.mintbaseWallet ****************** ', this.mintbaseWallet)
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     if (this.mintbaseWallet.isConnected()) {
       this._isLogged$.next(true);
+      console.warn('near-lib connect(): connecting an already connected wallet.')
       return;
     }
     
@@ -150,6 +147,26 @@ export class NearWallet {
       this._isLogged$.next(true);
     } catch (error) {
       throw CannotConnectError.becauseMintbaseLoginFail();
+    }
+  }
+
+  /**
+   * @description It is simply a bridge to the details of the wallet
+   * ------------------------------------------------------------------------------------
+   * @returns {{details: NearWalletDetails}} get details stored in mintbase connection object
+   * @throws {CannotConnectError} If dont have mintbase wallet or mintbase lib method throws an exception
+   */
+  public async getMintbaseAccountData(): Promise<{details: NearWalletDetails, contractName: string, account: any}> {
+    if(!this.mintbaseWallet || !this.mintbaseWallet.activeWallet) throw CannotConnectError.becauseMintbaseNotConnected();
+    
+    try {
+      const { data: details } = await this.mintbaseWallet.details();
+      const contractName = details.contractName;
+      const account = this.mintbaseWallet.activeWallet.account();
+    
+      return {details, contractName, account};
+    } catch (error) {
+      throw CannotConnectError.becauseMintbaseError();
     }
   }
 
@@ -178,64 +195,6 @@ export class NearWallet {
     } catch (error) {
       throw CannotGetContractError.becauseNearError();
     }
-  }
-
-  /**
-   * @description set account info from mintbase connection
-   * ------------------------------------------------------------------------------------
-   * @throws {CannotConnectError} code: 0102. If user currently not logged to near wallet
-   * @throws {CannotConnectError} code: 0105. If cannot retrieve wallet details from mintbase user or uncatched mintabse error.
-   */
-  public async setMintbaseData(): Promise<void> {
-    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
-    
-  }
-
-  // @TODO legacy method, deprecate it
-  public async mintbaseLogin(): Promise<void> {
-    return this.mintbaseLoggedOrFail();
-  }
-
-  /**
-   * @description Check if we are already logged on mintbase
-   * @description We use the mintbase object to retrieve actual connection so we can use its methods and properties
-   * @description Set local variables to work with mintbase connection
-   * @description This method must be called on app initialization or refresh
-   * ------------------------------------------------------------------------------------
-   * @throws {CannotConnectError} code: 0102. If user currently not logged to near wallet
-   * @throws {CannotConnectError} code: 0105. If cannot retrieve wallet details from mintbase user or uncatched mintabse error.
-   */
-  public async mintbaseLoggedOrFail(): Promise<void> {
-    if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
-
-    try {
-      await this.mintbaseWallet.loggedOrFail();
-      // @MF TODO: quizás moverlo a un setup ?
-      this.mintbaseGraphql = new MintbaseGraphql(this.mintbaseWallet.api?.apiBaseUrl);
-    } catch (error) {
-      this._isLogged$.next(false);
-      if(error instanceof CannotConnectError) throw error;
-      else throw CannotConnectError.becauseMintbaseError();
-    }
-    this._isLogged$.next(true);
-  }
-
-  /**
-     * @description Retrieve account that is logged in mintbase
-     * ------------------------------------------------------------------------------------
-     * @throws {CannotConnectError} code: 0102. If user currently not logged to near wallet
-     * @throws {CannotConnectError} code: 0105. If cannot retrieve wallet details from mintbase user or uncatched mintabse error.
-   */
-  public getMintbaseConnectedAccount() {
-    if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
-    try {
-      const account = this.mintbaseWallet.activeWallet?.account()
-      const accountId = this.mintbaseWallet.activeWallet?.account().accountId
-      console.log('Getting account for: ', accountId);
-      return account;
-  } catch (error) {
-      throw CannotConnectError.becauseMintbaseError();
-  }
   }
 
   /**
@@ -361,7 +320,7 @@ export class NearWallet {
     if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
     const account = this.mintbaseWallet.activeWallet?.account()
     const accountId = this.mintbaseWallet.activeWallet?.account().accountId
-    const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName
+    const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
 
     if (!account || !accountId || !contractName) throw cannotGetMintersError.becauseMintbaseNotConnected();
 

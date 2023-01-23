@@ -23,17 +23,12 @@ export const MAINNET_CONFIG = {
   },
 };
 
-export const CLOUD_URI = process.env.MINTBASEJS_CLOUD_URI
-export const API_VERSION = process.env.MINTBASEJS_API_VERSION || '1'
+export const CLOUD_URI = 'https://us-central1-omni-live.cloudfunctions.net';
+export const API_VERSION = '1'
 
-export const API_BASE_NEAR_MAINNET =
-  process.env.MINTBASEJS_API_BASE_NEAR_MAINNET ||
-  'https://mintbase-mainnet.hasura.app/';
+export const MINTBASE_GRAPHQL_MAINNET = 'https://mintbase-mainnet.hasura.app/';
+export const MINTBASE_GRAPHQL_TESTNET = 'https://mintbase-testnet.hasura.app/';
 
-export const API_BASE_NEAR_TESTNET =
-  process.env.MINTBASEJS_API_BASE_NEAR_TESTNET ||
-  'https://mintbase-testnet.hasura.app/';
-  
 export const BASE_ARWEAVE_URI = 'https://arweave.net'
 
 export const DEFAULT_APP_NAME = 'Mintbase.js'
