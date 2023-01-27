@@ -24,6 +24,7 @@ import { cannotFetchStoreError } from "./../error/cannotFetchStoreError";
 import { cannotMakeOfferError } from "./../error/cannotMakeOfferError";
 import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
 import * as utils from './../utils/near';
+import { Minter } from "mintbase/lib/minter";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
@@ -59,6 +60,7 @@ export class MintbaseWallet extends Wallet {
     ): Promise<ResponseData<{ wallet: Wallet; isConnected: boolean }>> {
       
       try {
+        // @TODO: do this with nanostore constants ?
         this.constants = await initializeExternalConstants({
           apiKey: walletConfig.apiKey,
           networkName: walletConfig.networkName,
@@ -92,14 +94,13 @@ export class MintbaseWallet extends Wallet {
         this.activeNearConnection = near;
         this.activeWallet = new WalletAccount(near, 'nanostore');
         
-        /* @TODO Para que se usa este objeto ? Es necesario ?
 
         this.minter = new Minter({
           apiKey: walletConfig.apiKey,
           constants: this.constants,
-        })
+        });
 
-        */
+        
         
         // We only want to init, not connect yet
         // await this.connect()

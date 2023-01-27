@@ -6,6 +6,8 @@ import {
 } from 'near-api-js';
 
 import {
+  ConstructNearWalletParams,
+  MetadataField,
   MintbaseThing,
   NearNetwork,
   NearWalletDetails,
@@ -19,7 +21,10 @@ import {
   TESTNET_CONFIG,
   MAINNET_CONFIG,
   MINTBASE_GRAPHQL_TESTNET,
-  FACTORY_CONTRACT_NAME
+  FACTORY_CONTRACT_NAME,
+  MAX_GAS,
+  ONE_YOCTO,
+  BASE_ARWEAVE_URI
 } from './constants';
 import { MintbaseGraphql } from './mintbase/mintbase-graphql';
 import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
@@ -38,6 +43,9 @@ import { cannotGetMintersError } from './error/cannotGetMintersError';
 import { NanostoreWallet } from './nanostore/nanostore-wallet';
 import { Chain } from 'mintbase';
 import { getGraphQlUri } from './utils/graphQl';
+import { NANOSTORE_CONTRACT_NAME } from './nanostore/constants';
+
+import { execute, mint, MintArgs } from '@mintbase-js/sdk'
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near wallet 
@@ -64,7 +72,7 @@ export class NearWallet {
   /** mintbaseWallet is the object that contains all mintbase methods and parameters */
   private mintbaseWallet: MintbaseWallet;
 
-  private nanostoreWallet: any;
+  private nanostoreWallet: NanostoreWallet;
 
   /** Show development helper logs */
   private logs: boolean = true;
@@ -81,12 +89,18 @@ export class NearWallet {
     private apiKey: string,
     public networkName: NearNetwork = NearNetwork.testnet
   ) {
+    const params: ConstructNearWalletParams = {
+      contractAddress: "nanostore.testnet",
+      network: NearNetwork.testnet
+    }
+    this.nanostoreWallet = new NanostoreWallet(params); 
+
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
     switch (networkName) {
       case NearNetwork.mainnet:
           this.mintbaseWallet = new MintbaseWallet({apiKey, networkName: Network.mainnet, chain: Chain.near, contractName: FACTORY_CONTRACT_NAME});
-          // this.nanostoreWallet = new NanostoreWallet(); 
+          
         break;
       case NearNetwork.testnet:
           this.mintbaseWallet = new MintbaseWallet({apiKey, networkName: Network.testnet, chain: Chain.near, contractName: FACTORY_CONTRACT_NAME});
@@ -149,6 +163,100 @@ export class NearWallet {
       throw CannotConnectError.becauseMintbaseLoginFail();
     }
   }
+
+  public async pruebas1() {
+
+    await this.mintbaseWallet.grantMinter('eurega.testnet', NANOSTORE_CONTRACT_NAME);
+  }
+
+  public async pruebas2() {
+    await this.printableNftMint()
+  }
+
+  /**
+     * @description Mint an nft that could be 3d printed
+     * ------------------------------------------------------------------------------------
+     * @param {ConnectedWalletAccount} account
+     */
+  public async printableNftMint(): Promise<void> {
+    if(!this.mintbaseWallet || !this.mintbaseWallet.activeWallet) throw new Error('No wallet connection');
+    if(!this.mintbaseWallet.minter) throw new Error('No minter defined');
+
+    const metadata = {
+      store: '',
+      type: 'NEP171',
+      title:"nanostore prueba nueva8",
+      description:"nanostore nueva8 description",
+      category: "3D print"
+    };
+  
+    this.mintbaseWallet.minter.setField(MetadataField.Tags, ['tag1', 'tag2']);
+    this.mintbaseWallet.minter.setField(MetadataField.Extra, [{trait_type: "material1", value: 5}, {trait_type: "material2", value: 11}]);
+    this.mintbaseWallet.minter.setMetadata(metadata, true);
+
+    const { data: metadataId, error } = await this.mintbaseWallet.minter.getMetadataId();
+
+    const meta = JSON.stringify({
+      type: 'mint',
+      args: {
+        contractAddress: NANOSTORE_CONTRACT_NAME,
+        amount: 1,
+        thingId: `${metadataId}:${NANOSTORE_CONTRACT_NAME}`,
+      },
+    });
+
+    try {
+      const account = this.mintbaseWallet.activeWallet.account();
+      const contract = new Contract(
+          account, 
+          NANOSTORE_CONTRACT_NAME,
+          {
+              viewMethods: STORE_CONTRACT_VIEW_METHODS,
+              changeMethods: STORE_CONTRACT_CALL_METHODS
+          }
+      );
+        
+        
+
+        /*
+        await this.mintbaseWallet.mint(
+          1,
+          NANOSTORE_CONTRACT_NAME,
+          undefined,
+          undefined,
+          'category...',
+          {
+            callbackUrl: "",
+            meta,
+            royaltyPercentage: 0,
+            metadataId
+          })
+        */
+        
+        
+          
+        // @ts-ignore: method does not exist on Contract type
+        await contract.nft_batch_mint({
+          meta,
+          callbackUrl: "",
+          args: {
+              owner_id: "nanostore.testnet",
+              metadata: {
+                reference: metadataId,
+                ...metadata
+             },
+              "royalty_args": null,
+              "num_to_mint":1
+          },
+          gas: MAX_GAS,
+          amount: ONE_YOCTO,
+        });
+        
+        
+    } catch (error) {
+        console.log('a error ocurred !', error);
+    }
+}
 
   /**
    * @description It is simply a bridge to the details of the wallet
@@ -221,7 +329,7 @@ export class NearWallet {
       filter(ev => ev === true))
     )
      try {
-      const response = await this.mintbaseGraphql?.getWalletThings(accountId);
+      const response = await this.mintbaseGraphql?.getNanostoreTokens(0,10);
 
       if (response === undefined && intent < 20) {
         // Do a timeout await
@@ -233,6 +341,7 @@ export class NearWallet {
       return response;
 
     } catch (error) {
+      console.log('New error: ', error)
       throw CannotGetTokenError.becauseMintbaseError();
     }
   }
@@ -276,7 +385,7 @@ export class NearWallet {
    */
   public async getMyThings(myStoreId: string) {
     try {
-      const things =  await this.mintbaseGraphql?.getStoreThings(myStoreId);
+      const things =  await this.mintbaseGraphql?.getWalletThings(myStoreId);
       return things;
     } catch (error) {
       throw cannotGetThingsError.becauseMintbaseError();

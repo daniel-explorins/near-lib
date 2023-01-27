@@ -1,4 +1,4 @@
-import { MetadataField, Constants, MintMetadata, Royalties, Token } from 'mintbase';
+import { Constants, MintMetadata, Royalties, Token } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 
 /** Lib only works with near */
@@ -78,8 +78,6 @@ interface Metadata extends MintMetadata {
   [MetadataFieldExtension.Printable]?: boolean
 };
 
-type MetadataFields = MetadataFieldExtension | MetadataField;
-
 
 type OptionalMethodArgs = {
   gas?: string
@@ -98,12 +96,9 @@ interface NEARConfig {
 
 type ConstructNearWalletParams = {
   network: NearNetwork,
-  contractAddress: string
-  accountId: string,
-  apiKey: string, // useful for node environment
+  contractAddress: string,
   successUrl?: string,
-  failureUrl?: string,
-  privateKey?: string // useful for node environment
+  failureUrl?: string
 }
 
 type NearTransaction = Transaction & {
@@ -157,13 +152,41 @@ export interface MintbaseNftMetadata {
   animation_size: number;
 }
 
+enum MetadataField {
+  Id = 'id',
+  Title = 'title',
+  Category = 'category',
+  Description = 'description',
+  Media = 'media',
+  Media_hash = 'media_hash',
+  Tags = 'tags',
+  Image_preview = 'imagePreview',
+  Copies = 'copies',
+  Extra = 'extra',
+  External_url = 'external_url',
+  Background_color = 'background_color',
+  Animation_url = 'animation_url',
+  Animation_hash = 'animation_hash',
+  Youtube_url = 'youtube_url',
+  UpdatedAt = 'updated_at',
+  Document = 'document',
+  Document_hash = 'document_hash',
+  Lock = 'lock',
+  Visibility = 'visibility',
+  Chain = 'chain',
+  Store = 'store',
+  Royalty = 'royalty',
+  Royalty_perc = 'royalty_perc',
+  SplitRevenue = 'split_revenue',
+}
+
 export {
   MintbaseConstants,
   NearWalletDetails,
   NearToken,
   Account,
   Visibility,
-  MetadataFields,
+  MetadataField,
   Metadata,
   NearRoyalties,
   CloudStorageConstants,

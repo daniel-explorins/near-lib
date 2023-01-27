@@ -1,7 +1,7 @@
 import { request, gql } from 'graphql-request'
 import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
-import { storeGeneralQuery, thingGeneralQuery } from '../utils/graphQuery';
+import { storeGeneralQuery, thingGeneralQuery, tokensGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
 import { GetStoreByOwner, GetTokensOfStoreId } from 'src/graphql_types';
 import { MintbaseThing } from './../types';
@@ -301,4 +301,31 @@ export class MintbaseGraphql {
     if(response) return response.thing;
     else throw new Error('My store cannot be accessed.')
   }
+
+  /**
+   * 
+   * @param storeId 
+   * @returns 
+   */
+  public async getNanostoreTokens(offset: number, limit: number): Promise<MintbaseThing[]> {
+    
+    const query = gql`{
+      mb_views_nft_tokens(
+        where: {owner: {_eq: "nanostore.testnet"}, nft_contract_id: {_eq: "pruebas10.nanostore.testnet"}}
+        offset: ${offset}
+        limit: ${limit}
+      ) {
+        ${tokensGeneralQuery}
+      }
+    }
+  `;
+
+  const response = await this.custom(
+    query
+  ) as any;
+
+  if(response) return response.mb_views_nft_tokens;
+  else throw new Error('My store cannot be accessed.')
+
+}
 }

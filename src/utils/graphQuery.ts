@@ -41,6 +41,45 @@ export const storeGeneralQuery = `
             ownerId
         }
 `
+export const tokensGeneralQuery = `
+base_uri
+burned_receipt_id
+burned_timestamp
+copies
+description
+expires_at
+extra
+issued_at
+last_transfer_receipt_id
+last_transfer_timestamp
+media
+media_hash
+metadata_id
+mint_memo
+minted_receipt_id
+minted_timestamp
+minter
+nft_contract_created_at
+nft_contract_icon
+nft_contract_id
+nft_contract_is_mintbase
+nft_contract_name
+nft_contract_owner_id
+nft_contract_reference
+nft_contract_spec
+nft_contract_symbol
+owner
+reference
+reference_blob
+reference_hash
+royalties
+royalties_percent
+splits
+starts_at
+title
+token_id
+updated_at
+`
 
 export const thingGeneralQuery = `
 id

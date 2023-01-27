@@ -110,3 +110,5 @@ enum DisplayType {
   longitude = 'longitude',
 }
 ```
+
+### Un ejemplo de metadata subida recuperada a través de Graphql

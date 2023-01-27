@@ -155,42 +155,7 @@ export class NanostoreWallet {
         }
     }
 
-    /**
-     * @description Mint an nft that could be 3d printed
-     * ------------------------------------------------------------------------------------
-     * @param {ConnectedWalletAccount} account
-     */
-    public async printableNftMint(account: ConnectedWalletAccount): Promise<void> {
-        try {
-            const contract = new Contract(
-                account, 
-                NANOSTORE_CONTRACT_NAME,
-                {
-                    viewMethods: STORE_CONTRACT_VIEW_METHODS,
-                    changeMethods: STORE_CONTRACT_CALL_METHODS
-                }
-            );
-            // @ts-ignore: method does not exist on Contract type
-            await contract.nft_batch_mint({
-            meta: null,
-            callbackUrl: "",
-            args: {
-                "owner_id": "nanostore.testnet",
-                "metadata": {
-                "title":"nanostore prueba 3",
-                "description":"nanostore prueba1 description"
-                },
-                "royalty_args": null,
-                "num_to_mint":1
-            },
-            gas: MAX_GAS,
-            amount: ONE_YOCTO,
-            });
-            
-        } catch (error) {
-            console.log('a error ocurred !', error);
-        }
-    }
+    
 
  
 }
