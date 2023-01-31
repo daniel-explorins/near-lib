@@ -306,6 +306,7 @@ export class MintbaseGraphql {
    * 
    * @param storeId 
    * @returns 
+   * @throws Custom Error if cannot get data
    */
   public async getNanostoreTokens(offset: number, limit: number): Promise<MintbaseThing[]> {
     
@@ -324,7 +325,7 @@ export class MintbaseGraphql {
     query
   ) as any;
 
-  if(response) return response.mb_views_nft_tokens;
+  if(response && response.mb_views_nft_tokens) return response.mb_views_nft_tokens;
   else throw new Error('My store cannot be accessed.')
 
 }

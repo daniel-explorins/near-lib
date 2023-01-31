@@ -3,8 +3,8 @@ import { API, Wallet } from "mintbase";
 import { Chain, Network, OptionalMethodArgs, WalletConfig } from "mintbase/lib/types";
 import { formatResponse, ResponseData } from "mintbase/lib/utils/responseBuilder";
 import { connect, Contract, keyStores, WalletAccount } from "near-api-js";
-import { BehaviorSubject } from "rxjs";
-import { MintbaseWalletConfig } from "./../types";
+import { BehaviorSubject, firstValueFrom, timer } from "rxjs";
+import { MintbaseThing, MintbaseWalletConfig } from "./../types";
 import { initializeExternalConstants } from "./../utils/external-constants";
 import { 
   CLOUD_URI,
@@ -25,12 +25,18 @@ import { cannotMakeOfferError } from "./../error/cannotMakeOfferError";
 import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
 import * as utils from './../utils/near';
 import { Minter } from "mintbase/lib/minter";
-
+import { MintbaseGraphql } from "./mintbase-graphql";
+import { getGraphQlUri } from "src/utils/graphQl";
+import { CannotGetTokenError } from "../error/CannotGetTokenError";
+import { cannotGetMintersError, cannotGetThingsError } from "src/error";
+import { GetStoreByOwner, GetTokensOfStoreId } from "src/graphql_types";
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
  */
 export class MintbaseWallet extends Wallet {
+
+    public mintbaseGraphql: MintbaseGraphql | undefined;
   
     public constructor(
         public walletConfig: MintbaseWalletConfig & {contractName: string}
@@ -43,7 +49,7 @@ export class MintbaseWallet extends Wallet {
     /**
      * @description This method initializes mintbase factory contract wallet object in a custom way
      * @set 
-     * api: @Api de Mintbase, ver si realmente se usa
+     * api: @Api de Mintbase, TODO: ver si realmente se usa
      * constants
      * networkname: mainnet o testnet
      * chain: Solo usamos near
@@ -70,9 +76,12 @@ export class MintbaseWallet extends Wallet {
           networkName: walletConfig.networkName,
           chain: Chain.near,
           constants: this.constants,
-        })
-  
+        });
+
         this.networkName = walletConfig.networkName;
+
+        this.mintbaseGraphql = new MintbaseGraphql(getGraphQlUri(this.networkName));
+        
         // this lib only supports near
         this.chain = Chain.near;
         this.nearConfig = utils.getNearConfig(
@@ -117,6 +126,70 @@ export class MintbaseWallet extends Wallet {
       }
     }
 
+    /**
+   * TODO: check retryFetch logic
+   * @description Returns the things that belong to the connected user
+   * ------------------------------------------------------------------------------------
+   * @param {int} intent we intent to get things max 20 times
+   * 
+   * @throws {CannotGetTokenError} code: 503. If mintbase error 
+   * @returns {Promise<MintbaseThing[]>}
+   */
+  public async getTokenFromCurrentWallet( 
+    intent = 0
+  ): Promise<MintbaseThing[] | undefined>
+  {
+    intent++;
+
+    try {
+      return await this.mintbaseGraphql?.getNanostoreTokens(0,10);
+    } catch (error) {
+      if (intent < 20) {
+        // Do a timeout await
+        await firstValueFrom(timer(intent * 5000));
+        return this.getTokenFromCurrentWallet(intent)
+      } else if(intent >= 20) {
+        throw CannotGetTokenError.becauseMintbaseError();
+      } 
+    }
+  }
+
+	/**
+	 * @description -
+	 * ------------------------------------------------------------------------------------
+	 * @param myStoreId 
+	 * @throws {cannotGetThingsError}
+	 */
+	public async getMyThings(myStoreId: string) {
+		try {
+		return await this.mintbaseGraphql?.getWalletThings(myStoreId);
+		} catch (error) {
+		throw cannotGetThingsError.becauseMintbaseError();
+		}
+	}
+
+	/**
+   * @description It is a bridge to use the native function of mintbase
+   * -------------------------------------------------------------------
+   * @param tokenId 
+   * @param price 
+   * @param storeId 
+   * @param options 
+   * @throws {cannotMakeOfferError} 
+   */
+	public async offer(
+		tokenId: string,
+		price: string,
+		storeId?: string,
+		options?: OptionalMethodArgs & {
+		  marketAddress?: string
+		  timeout?: number
+		}
+	  ): Promise<boolean> {
+		await this.launchOffer(tokenId, price, storeId, options);
+		return true;
+	  }
+
   /**
    * @description 
    * ---------------------------------------------------
@@ -136,6 +209,7 @@ export class MintbaseWallet extends Wallet {
 
     /**
    * @description
+   * -----------------------------------------------------
    * @param tokenId 
    * @param price 
    * @param storeId 
@@ -195,14 +269,88 @@ export class MintbaseWallet extends Wallet {
 
   /**
    * @description
+   * ---------------------------------------------
    */
   public getConnectionInfo() {
     return this.activeNearConnection ;
   }
 
+  /**
+   * TODO: Este método "list_minters" está en la documentación de mintbase, pero no existe ??
+   * TODO: improve any return
+   * @description Call the contract method list_minters
+   * ------------------------------------------------------------------------------------
+   * @throws {cannotGetMintersError} code: 0901. If some of the mandatory params not found
+   * @throws {cannotGetMintersError} code: 0903. If contract method fails
+   */
+  public async getMinters(): Promise<any>
+  {
+    if(!this.activeWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+    const account = this.activeWallet?.account()
+    const accountId = this.activeWallet?.account().accountId
+    const contractName = this.activeNearConnection?.config.contractName;
+
+    if (!account || !accountId || !contractName) throw cannotGetMintersError.becauseMintbaseNotConnected();
+
+    const contract = new Contract(account, contractName, {
+      viewMethods:
+        this.constants.STORE_CONTRACT_VIEW_METHODS ||
+        STORE_CONTRACT_VIEW_METHODS,
+      changeMethods:
+        this.constants.STORE_CONTRACT_CALL_METHODS ||
+        STORE_CONTRACT_CALL_METHODS,
+    })
+    try {
+      // @ts-ignore: method does not exist on Contract type
+      const minters = await contract.list_minters();
+      return minters;
+    } catch (error) {
+      throw cannotGetMintersError.becauseContractError();
+    }
+  }
+
+  /**
+   * TODO: improve any return
+   * @description Search and retrieve your near store in mintbase platform
+   * ------------------------------------------------------------------------------------
+   * @throws {cannotFetchStoreError} code: 0701. If some of the mandatory params was not found
+   * @throws {cannotFetchStoreError} code: 0703. If graphql error
+   */
+  public async getMyStores(): Promise<GetStoreByOwner>
+  {
+    if(!this.activeWallet || !this.mintbaseGraphql) throw cannotFetchStoreError.becauseMintbaseNotConnected();
+    try {
+		const accountId = this.activeWallet.account().accountId;
+      	return await this.mintbaseGraphql.getStoreByOwner(accountId);
+    } catch (error) {
+      throw cannotFetchStoreError.becauseGraphqlError();
+    }
+  }
+
+	/**
+	 * @description
+	 * ------------------------------------------------------------------------------------
+	 * @param storeId 
+	 * @throws {cannotFetchStoreError} code: 0701. If internal mintbaseGraphql object was not found
+	 * @throws {cannotFetchStoreError} code: 0703. If graphql error
+	 */
+	public async getTokensOfStoreId(
+		storeId: string
+	): Promise<GetTokensOfStoreId>
+	{
+		if(!this.mintbaseGraphql) throw cannotFetchStoreError.becauseMintbaseNotConnected();
+		try {
+		const tokens = await this.mintbaseGraphql.getTokensOfStoreId(storeId)
+		return tokens;
+		} catch (error) {
+		throw cannotFetchStoreError.becauseGraphqlError();
+		}
+	}
+
 
     /**
      * @description
+     * ------------------------------------------------
      * @throws {CannotConnectError}
      */
     public async getAccountId(): Promise<string>
@@ -232,6 +380,8 @@ export class MintbaseWallet extends Wallet {
     }
 
     /**
+     * @description
+     * -----------------------------------------------
      * @throws {CannotTransferTokenError}
      */
     public async transferToken(
@@ -275,6 +425,7 @@ export class MintbaseWallet extends Wallet {
 
     /**
      * @description Returns all the stores that are listed in mintbase
+     * ------------------------------------------------------------
      * @param offset 
      * @param limit 
      * @throws {cannotFetchStoreError} 
@@ -295,6 +446,7 @@ export class MintbaseWallet extends Wallet {
 
     /**
    * @description
+   * --------------------------------------------------------------
    * @param storeId 
    * @throws {cannotFetchStoreError}
    */

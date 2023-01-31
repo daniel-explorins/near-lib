@@ -63,12 +63,13 @@ enum Visibility {
   safe = 'safe',
 }
 
+
 enum NearNetwork { 
   testnet = 'testnet',
-  mainnet = 'mainnet',
-  mintbase_testnet = 'mintbase_testnet',
-  mintbase_mainnet = 'mintbase_mainnet'
-};
+  mainnet = 'mainnet'
+}
+
+type NanostoreNetwork = Network | NearNetwork;
 
 enum MetadataFieldExtension {
   Printable = 'printable'
@@ -194,5 +195,6 @@ export {
   NEARConfig,
   ConstructNearWalletParams,
   NearTransaction,
-  NearNetwork
+  NearNetwork,
+  NanostoreNetwork
 }

@@ -1,7 +1,7 @@
 import { MINTBASE_GRAPHQL_MAINNET, MINTBASE_GRAPHQL_TESTNET } from "./../constants";
 import { NearNetwork, Network } from "./../types";
 
-export const getGraphQlUri = (network: NearNetwork) => {
+export const getGraphQlUri = (network: NearNetwork|Network) => {
     switch(network) {
         case NearNetwork.mainnet:
             return MINTBASE_GRAPHQL_MAINNET;

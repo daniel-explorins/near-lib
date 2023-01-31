@@ -12,40 +12,28 @@ import {
   NearNetwork,
   NearWalletDetails,
   Network,
-  NetworkConfig,
-  OptionalMethodArgs,
 } from './types'
 import {
   STORE_CONTRACT_VIEW_METHODS,
   STORE_CONTRACT_CALL_METHODS,
-  TESTNET_CONFIG,
-  MAINNET_CONFIG,
-  MINTBASE_GRAPHQL_TESTNET,
   FACTORY_CONTRACT_NAME,
   MAX_GAS,
-  ONE_YOCTO,
-  BASE_ARWEAVE_URI
+  ONE_YOCTO
 } from './constants';
-import { MintbaseGraphql } from './mintbase/mintbase-graphql';
-import { BehaviorSubject, filter, firstValueFrom, shareReplay, timer } from 'rxjs';
+import { BehaviorSubject, shareReplay } from 'rxjs';
 import { CannotConnectError } from './error/cannotConectError';
 import { CannotDisconnectError } from './error/cannotDisconnectError';
 import { CannotTransferTokenError } from './error/cannotTransferTokenError';
 import { MintbaseWallet } from './mintbase/mintbase-wallet';
 import { CannotGetContractError } from './error/CannotGetContractError';
 import { CannotGetTokenError } from './error/CannotGetTokenError';
-import { cannotMakeOfferError } from './error/cannotMakeOfferError';
 import { cannotFetchStoreError } from './error/cannotFetchStoreError';
-import { cannotGetThingsError } from './error/cannotGetThingsError';
 import { cannotFetchMarketPlaceError } from './error/cannotFetchMarketPlaceError';
 import { GetStoreByOwner, GetTokensOfStoreId } from './graphql_types';
-import { cannotGetMintersError } from './error/cannotGetMintersError';
 import { NanostoreWallet } from './nanostore/nanostore-wallet';
 import { Chain } from 'mintbase';
-import { getGraphQlUri } from './utils/graphQl';
 import { NANOSTORE_CONTRACT_NAME } from './nanostore/constants';
-
-import { execute, mint, MintArgs } from '@mintbase-js/sdk'
+import { TEST_METADATA } from './constants/test.data';
 
 /** 
  * Object that contains the methods and variables necessary to interact with the near wallet 
@@ -55,13 +43,8 @@ export class NearWallet {
   /** Internal subject that stores login state */
   private _isLogged$ = new BehaviorSubject(false);
 
-  /** Network configuration */
-  private networkConfig: NetworkConfig|undefined;
-
   /** External public observable to login state */
   public isLogged$ = this._isLogged$.asObservable().pipe(shareReplay());
-
-  public mintbaseGraphql: MintbaseGraphql | undefined;
 
   /** Name that give us access to contract */
   public contractName: string | undefined;
@@ -71,11 +54,6 @@ export class NearWallet {
 
   /** mintbaseWallet is the object that contains all mintbase methods and parameters */
   private mintbaseWallet: MintbaseWallet;
-
-  private nanostoreWallet: NanostoreWallet;
-
-  /** Show development helper logs */
-  private logs: boolean = true;
 
   /**
    * @MF TODO: Move initialization from constructor to static public method ?
@@ -89,21 +67,25 @@ export class NearWallet {
     private apiKey: string,
     public networkName: NearNetwork = NearNetwork.testnet
   ) {
-    const params: ConstructNearWalletParams = {
-      contractAddress: "nanostore.testnet",
-      network: NearNetwork.testnet
-    }
-    this.nanostoreWallet = new NanostoreWallet(params); 
-
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
     switch (networkName) {
       case NearNetwork.mainnet:
-          this.mintbaseWallet = new MintbaseWallet({apiKey, networkName: Network.mainnet, chain: Chain.near, contractName: FACTORY_CONTRACT_NAME});
+          this.mintbaseWallet = new MintbaseWallet({
+            apiKey, 
+            networkName: Network.mainnet, 
+            chain: Chain.near, 
+            contractName: FACTORY_CONTRACT_NAME // Mintbase: FACTORY_CONTRACT_NAME
+          });
           
         break;
       case NearNetwork.testnet:
-          this.mintbaseWallet = new MintbaseWallet({apiKey, networkName: Network.testnet, chain: Chain.near, contractName: FACTORY_CONTRACT_NAME});
+          this.mintbaseWallet = new MintbaseWallet({
+            apiKey, 
+            networkName: Network.testnet, 
+            chain: Chain.near, 
+            contractName: NANOSTORE_CONTRACT_NAME // Mintbase: FACTORY_CONTRACT_NAME
+          });
         break;
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
@@ -129,7 +111,9 @@ export class NearWallet {
     
     if(this.mintbaseWallet.activeWallet.isSignedIn()) {
         this._isLogged$.next(true);
-        this.mintbaseGraphql = new MintbaseGraphql(getGraphQlUri(this.networkName));
+        
+        const walletDetails = await this.getMintbaseAccountData();
+        console.log('Details ... ', walletDetails)
     } else {
         this._isLogged$.next(false);
     }
@@ -160,6 +144,7 @@ export class NearWallet {
       await this.mintbaseWallet.connect({ requestSignIn: true });
       this._isLogged$.next(true);
     } catch (error) {
+      this._isLogged$.next(false);
       throw CannotConnectError.becauseMintbaseLoginFail();
     }
   }
@@ -169,8 +154,8 @@ export class NearWallet {
     await this.mintbaseWallet.grantMinter('eurega.testnet', NANOSTORE_CONTRACT_NAME);
   }
 
-  public async pruebas2() {
-    await this.printableNftMint()
+  public async pruebas2(file: File) {
+    await this.printableNftMint(file)
   }
 
   /**
@@ -178,20 +163,16 @@ export class NearWallet {
      * ------------------------------------------------------------------------------------
      * @param {ConnectedWalletAccount} account
      */
-  public async printableNftMint(): Promise<void> {
+  public async printableNftMint(file: File): Promise<void> {
     if(!this.mintbaseWallet || !this.mintbaseWallet.activeWallet) throw new Error('No wallet connection');
     if(!this.mintbaseWallet.minter) throw new Error('No minter defined');
 
-    const metadata = {
-      store: '',
-      type: 'NEP171',
-      title:"nanostore prueba nueva8",
-      description:"nanostore nueva8 description",
-      category: "3D print"
-    };
-  
-    this.mintbaseWallet.minter.setField(MetadataField.Tags, ['tag1', 'tag2']);
-    this.mintbaseWallet.minter.setField(MetadataField.Extra, [{trait_type: "material1", value: 5}, {trait_type: "material2", value: 11}]);
+    const metadata = TEST_METADATA;
+
+    const { data: fileUploadResult, error: fileError } = await this.mintbaseWallet.minter.uploadField(MetadataField.Media, file);
+    console.log('data', fileUploadResult);
+    this.mintbaseWallet.minter.setField(MetadataField.Tags, metadata.tags);
+    this.mintbaseWallet.minter.setField(MetadataField.Extra, metadata.extra);
     this.mintbaseWallet.minter.setMetadata(metadata, true);
 
     const { data: metadataId, error } = await this.mintbaseWallet.minter.getMetadataId();
@@ -309,11 +290,6 @@ export class NearWallet {
    * TODO: check retryFetch logic
    * @description Returns the things that belong to the connected user
    * ------------------------------------------------------------------------------------
-   * @param {int} intent we intent to get things max 20 times
-   * 
-   * @throws {CannotGetTokenError} code: 501. If mintbase not found
-   * @throws {CannotGetTokenError} code: 502. If timeout error
-   * @throws {CannotGetTokenError} code: 503. If mintbase error 
    * @returns {Promise<MintbaseThing[]>}
    */
   public async getTokenFromCurrentWallet( 
@@ -322,28 +298,7 @@ export class NearWallet {
   {
     if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
 
-    intent++
-    const accountId = await this.mintbaseWallet?.getAccountId();
-
-    await firstValueFrom(this._isLogged$.pipe(
-      filter(ev => ev === true))
-    )
-     try {
-      const response = await this.mintbaseGraphql?.getNanostoreTokens(0,10);
-
-      if (response === undefined && intent < 20) {
-        // Do a timeout await
-        await firstValueFrom(timer(intent * 5000))
-        return this.getTokenFromCurrentWallet(intent)
-      } else if(intent >= 20) {
-        throw CannotGetTokenError.becauseTimeoutError();
-      } 
-      return response;
-
-    } catch (error) {
-      console.log('New error: ', error)
-      throw CannotGetTokenError.becauseMintbaseError();
-    }
+    return this.mintbaseWallet.getTokenFromCurrentWallet();
   }
 
   /**
@@ -377,43 +332,14 @@ export class NearWallet {
   }
 
   /**
-   * TODO: change the method name to more descriptive: getMyStoreThings
    * @description -
    * ------------------------------------------------------------------------------------
    * @param myStoreId 
    * @throws {cannotGetThingsError}
    */
-  public async getMyThings(myStoreId: string) {
-    try {
-      const things =  await this.mintbaseGraphql?.getWalletThings(myStoreId);
-      return things;
-    } catch (error) {
-      throw cannotGetThingsError.becauseMintbaseError();
-    }
-  }
-
-  /**
-   * @description It is a bridge to use the native function of mintbase
-   * @param tokenId 
-   * @param price 
-   * @param storeId 
-   * @param options 
-   * @throws {cannotMakeOfferError} 
-   */
-  public async offer(
-    tokenId: string,
-    price: string,
-    storeId?: string,
-    options?: OptionalMethodArgs & {
-      marketAddress?: string
-      timeout?: number
-    }
-  ): Promise<boolean> {
-    if(!this.mintbaseWallet) throw cannotMakeOfferError.becauseMintbaseNotConnected();
-
-    await this.mintbaseWallet.launchOffer(tokenId, price, storeId, options);
-
-    return true;
+  public async getMyStoreThings(myStoreId: string) {
+    if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
+    return await this.mintbaseWallet?.getMyThings(myStoreId);
   }
 
   /**
@@ -421,33 +347,11 @@ export class NearWallet {
    * TODO: improve any return
    * @description Call the contract method list_minters
    * ------------------------------------------------------------------------------------
-   * @throws {cannotGetMintersError} code: 0901. If some of the mandatory params not found
-   * @throws {cannotGetMintersError} code: 0903. If contract method fails
    */
   public async getMinters(): Promise<any>
   {
     if(!this.mintbaseWallet) throw CannotTransferTokenError.becauseMintbaseNotConnected();
-    const account = this.mintbaseWallet.activeWallet?.account()
-    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
-    const contractName = this.mintbaseWallet.activeNearConnection?.config.contractName;
-
-    if (!account || !accountId || !contractName) throw cannotGetMintersError.becauseMintbaseNotConnected();
-
-    const contract = new Contract(account, contractName, {
-      viewMethods:
-        this.mintbaseWallet.constants.STORE_CONTRACT_VIEW_METHODS ||
-        STORE_CONTRACT_VIEW_METHODS,
-      changeMethods:
-        this.mintbaseWallet.constants.STORE_CONTRACT_CALL_METHODS ||
-        STORE_CONTRACT_CALL_METHODS,
-    })
-    try {
-      // @ts-ignore: method does not exist on Contract type
-      const minters = await contract.list_minters();
-      return minters;
-    } catch (error) {
-      throw cannotGetMintersError.becauseContractError();
-    }
+    return await this.mintbaseWallet.getMinters();
   }
 
 
@@ -459,7 +363,7 @@ export class NearWallet {
    * @throws {cannotFetchMarketPlaceError}
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async fetchMarketplace(
+  public async fetchMintbaseMarketplace(
     offset?: number,
     limit?: number
   ) {
@@ -477,13 +381,17 @@ export class NearWallet {
    * @throws {cannotFetchStoreError} code: 0702. If internal mintbaseWallet api throws error
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async fetchStores(
+  public async fetchMintbaseStores(
     offset?: number,
     limit?: number
   ): Promise<any>
   {
     if(!this.mintbaseWallet) throw cannotFetchStoreError.becauseMintbaseNotConnected();
-    return await this.mintbaseWallet.fetchStores(offset, limit);
+    try {
+      return await this.mintbaseWallet.fetchStores(offset, limit);
+    } catch (error) {
+        throw cannotFetchStoreError.becauseMintbaseError();
+    }
   }
 
   /**
@@ -493,34 +401,23 @@ export class NearWallet {
    * @throws {cannotFetchStoreError} code: 0701. If some of the mandatory params was not found
    * @throws {cannotFetchStoreError} code: 0703. If graphql error
    */
-  public async getMyStores(): Promise<GetStoreByOwner>
+  public async getMyMintbaseStores(): Promise<GetStoreByOwner>
   {
-    if(!this.account || !this.mintbaseGraphql) throw cannotFetchStoreError.becauseMintbaseNotConnected();
-    try {
-      return await this.mintbaseGraphql.getStoreByOwner(this.account?.accountId);
-    } catch (error) {
-      throw cannotFetchStoreError.becauseGraphqlError();
-    }
+    if(!this.mintbaseWallet) throw cannotFetchStoreError.becauseMintbaseNotConnected();
+    return await this.mintbaseWallet.getMyStores();
   }
 
   /**
    * @description
    * ------------------------------------------------------------------------------------
    * @param storeId 
-   * @throws {cannotFetchStoreError} code: 0701. If internal mintbaseGraphql object was not found
-   * @throws {cannotFetchStoreError} code: 0703. If graphql error
    */
-  public async getTokensOfStoreId(
+  public async getMintbaseTokensOfStoreId(
     storeId: string
   ): Promise<GetTokensOfStoreId>
   {
-    if(!this.mintbaseGraphql) throw cannotFetchStoreError.becauseMintbaseNotConnected();
-    try {
-      const tokens = await this.mintbaseGraphql.getTokensOfStoreId(storeId)
-      return tokens;
-    } catch (error) {
-      throw cannotFetchStoreError.becauseGraphqlError();
-    }
+    if(!this.mintbaseWallet) throw cannotFetchStoreError.becauseMintbaseNotConnected();
+    return await this.mintbaseWallet.getTokensOfStoreId(storeId);
   }
 
   /**
@@ -540,3 +437,16 @@ export class NearWallet {
     return await this.mintbaseWallet.fetchStoreById(storeId);
   }
 }
+
+
+/* Pruebas para subir imagenes
+
+    const fetchResult = await fetch('/assets/nft-placeholder.png');
+    const arrayBuffer = await fetchResult.arrayBuffer();
+    var file = new File([arrayBuffer], "pruebas_img", {type: 'image/png'});
+    console.log('El file  .... ', file);
+    const fileResponse = await this.mintbaseWallet.minter.uploadField(MetadataField.Media, file);
+    
+    console.log('Imagen .... ', fileResponse);
+    return;
+    */
