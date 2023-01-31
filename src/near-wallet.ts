@@ -169,8 +169,8 @@ export class NearWallet {
 
     const metadata = TEST_METADATA;
 
-    // const { data, error: fileError } = await this.mintbaseWallet.minter.uploadField(MetadataField.Media, file);
-    // console.log('data', data);
+    const { data, error: fileError } = await this.mintbaseWallet.minter.uploadField(MetadataField.Media, file);
+    
     // this.mintbaseWallet.minter.setField(MetadataField.Tags, ["tag prueba 1", "tag prueba 2", "3D print hola ?"]);
     // this.mintbaseWallet.minter.setField(MetadataField.Extra, [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]);
     this.mintbaseWallet.minter.setMetadata(metadata, false);
