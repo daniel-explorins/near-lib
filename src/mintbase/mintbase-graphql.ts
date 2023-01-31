@@ -5,6 +5,7 @@ import { storeGeneralQuery, thingGeneralQuery, tokensGeneralQuery } from '../uti
 // Hay que probar de limpiar esta dependencia
 import { GetStoreByOwner, GetTokensOfStoreId } from 'src/graphql_types';
 import { MintbaseThing } from './../types';
+import { NANOSTORE_CONTRACT_NAME } from '../nanostore/constants';
 
 export class MintbaseGraphql {
 
@@ -312,7 +313,7 @@ export class MintbaseGraphql {
     
     const query = gql`{
       mb_views_nft_tokens(
-        where: {owner: {_eq: "nanostore.testnet"}, nft_contract_id: {_eq: "pruebas10.nanostore.testnet"}}
+        where: {owner: {_eq: "nanostore.testnet"}, nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}}
         offset: ${offset}
         limit: ${limit}
       ) {

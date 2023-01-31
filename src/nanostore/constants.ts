@@ -1,1 +1,1 @@
-export const NANOSTORE_CONTRACT_NAME = 'pruebas10.nanostore.testnet';
+export const NANOSTORE_CONTRACT_NAME = 'store2.nanostore.testnet';

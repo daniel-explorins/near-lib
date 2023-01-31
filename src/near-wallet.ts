@@ -169,11 +169,11 @@ export class NearWallet {
 
     const metadata = TEST_METADATA;
 
-    const { data: fileUploadResult, error: fileError } = await this.mintbaseWallet.minter.uploadField(MetadataField.Media, file);
-    console.log('data', fileUploadResult);
-    this.mintbaseWallet.minter.setField(MetadataField.Tags, metadata.tags);
-    this.mintbaseWallet.minter.setField(MetadataField.Extra, metadata.extra);
-    this.mintbaseWallet.minter.setMetadata(metadata, true);
+    // const { data, error: fileError } = await this.mintbaseWallet.minter.uploadField(MetadataField.Media, file);
+    // console.log('data', data);
+    // this.mintbaseWallet.minter.setField(MetadataField.Tags, ["tag prueba 1", "tag prueba 2", "3D print hola ?"]);
+    // this.mintbaseWallet.minter.setField(MetadataField.Extra, [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]);
+    this.mintbaseWallet.minter.setMetadata(metadata, false);
 
     const { data: metadataId, error } = await this.mintbaseWallet.minter.getMetadataId();
 
@@ -224,10 +224,10 @@ export class NearWallet {
               owner_id: "nanostore.testnet",
               metadata: {
                 reference: metadataId,
-                ...metadata
+                extra: 'El extra'
              },
-              "royalty_args": null,
-              "num_to_mint":1
+              royalty_args: null,
+              num_to_mint:1
           },
           gas: MAX_GAS,
           amount: ONE_YOCTO,

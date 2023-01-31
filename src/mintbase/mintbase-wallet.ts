@@ -26,10 +26,10 @@ import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
 import * as utils from './../utils/near';
 import { Minter } from "mintbase/lib/minter";
 import { MintbaseGraphql } from "./mintbase-graphql";
-import { getGraphQlUri } from "src/utils/graphQl";
+import { getGraphQlUri } from "../utils/graphQl";
 import { CannotGetTokenError } from "../error/CannotGetTokenError";
-import { cannotGetMintersError, cannotGetThingsError } from "src/error";
-import { GetStoreByOwner, GetTokensOfStoreId } from "src/graphql_types";
+import { cannotGetMintersError, cannotGetThingsError } from "../error";
+import { GetStoreByOwner, GetTokensOfStoreId } from "../graphql_types";
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
