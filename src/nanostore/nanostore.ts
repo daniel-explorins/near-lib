@@ -1,14 +1,14 @@
 import { ConnectedWalletAccount, Contract, utils } from "near-api-js";
 import { BehaviorSubject, shareReplay } from "rxjs";
-import { FACTORY_CONTRACT_NAME, MAX_GAS, ONE_YOCTO, TWENTY_FOUR } from "src/constants";
-import { CannotConnectError, CannotDisconnectError, CannotGetContractError, CannotGetTokenError, cannotMakeOfferError, CannotTransferTokenError } from "src/error";
-import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "src/mintbase/constants";
-import { MintbaseWallet } from "src/mintbase/mintbase-wallet";
-import { Chain, NearNetwork, NearWalletDetails, Network } from "src/types";
+import { FACTORY_CONTRACT_NAME, MAX_GAS, ONE_YOCTO, TWENTY_FOUR } from "../constants";
+import { CannotConnectError, CannotDisconnectError, CannotGetTokenError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
+import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
+import { MintbaseWallet } from "../mintbase/mintbase-wallet";
+import { Chain, NearNetwork, NearWalletDetails, Network } from "../types";
 import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS } from "./constants";
 import * as nearUtils from './../utils/near';
 import { TEST_METADATA } from "./test.data";
-import { CannotMint3DToken } from "src/error/CannotMint3DToken";
+import { CannotMint3DToken } from "../error/CannotMint3DToken";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications

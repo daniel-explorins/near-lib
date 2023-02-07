@@ -3,9 +3,8 @@ import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
 import { storeGeneralQuery, thingGeneralQuery, tokensGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
-import { GetStoreByOwner, GetTokensOfStoreId } from 'src/graphql_types';
+import { GetStoreByOwner, GetTokensOfStoreId } from '../graphql_types';
 import { MintbaseThing } from './../types';
-import { NANOSTORE_CONTRACT_NAME } from '../nanostore/constants';
 
 export class MintbaseGraphql {
 
