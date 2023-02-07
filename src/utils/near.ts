@@ -37,3 +37,8 @@ export const getNearConfig = (
      }
  }
 }
+
+export const calculateListCost = (amount: number): number => {
+  const cost = 0.0244 * amount
+  return cost
+}

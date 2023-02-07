@@ -286,10 +286,9 @@ export class MintbaseGraphql {
    * @returns 
    */
   public async getWalletThings(walletId?: string): Promise<MintbaseThing[]> {
-    if(!walletId) throw new Error('No wallet id')
     const query = gql`
     {
-      thing(where: {tokens: {ownerId: {_eq: "${walletId}"}}}) {
+      thing(where: {store: {name: {_eq: "${walletId}"}}}) {
         ${thingGeneralQuery}
       }
     }
@@ -304,16 +303,38 @@ export class MintbaseGraphql {
   }
 
   /**
+   * @description
+   * --------------------------------------------------------
+   * @param storeId 
+   * @returns 
+   */
+  public async getThingsByOwner(ownerId?: string): Promise<MintbaseThing[]> {
+    const query = gql`
+    {
+      thing(where: {tokens: {ownerId: {_eq: "${ownerId}"}}}) {
+        ${thingGeneralQuery}
+      }
+    }
+  `;
+  const response = await this.custom(
+    query
+  ) as any;
+
+  if(response) return response.thing;
+  else throw new Error('My store cannot be accessed.')
+}
+
+  /**
    * 
    * @param storeId 
    * @returns 
    * @throws Custom Error if cannot get data
    */
-  public async getNanostoreTokens(offset: number, limit: number): Promise<MintbaseThing[]> {
+  public async getTokensFromContract(offset: number, limit: number, contractName: string): Promise<any[]> {
     
     const query = gql`{
       mb_views_nft_tokens(
-        where: {owner: {_eq: "nanostore.testnet"}, nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}}
+        where: {nft_contract_id: {_eq: "${contractName}"}}
         offset: ${offset}
         limit: ${limit}
       ) {

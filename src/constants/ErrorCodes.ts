@@ -54,4 +54,9 @@ export default {
         MINTBASE_NOT_CONNECTED: '1001',
         MINTBASE_ERROR: '1002'
     },
+    MINT_3D: {
+        MINTBASE_NOT_CONNECTED: '1011',
+        MINTBASE_ERROR: '1012',
+        CONTRACT_ERROR: '1013'
+    },
 }

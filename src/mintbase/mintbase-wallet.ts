@@ -3,11 +3,12 @@ import { API, Wallet } from "mintbase";
 import { Chain, Network, OptionalMethodArgs, WalletConfig } from "mintbase/lib/types";
 import { formatResponse, ResponseData } from "mintbase/lib/utils/responseBuilder";
 import { connect, Contract, keyStores, WalletAccount } from "near-api-js";
-import { BehaviorSubject, firstValueFrom, timer } from "rxjs";
-import { MintbaseThing, MintbaseWalletConfig } from "./../types";
+import { firstValueFrom, timer } from "rxjs";
+import { MintbaseWalletConfig } from "./../types";
 import { initializeExternalConstants } from "./../utils/external-constants";
 import { 
   CLOUD_URI,
+  DEPLOY_STORE_COST,
   FACTORY_CONTRACT_NAME,
   MARKET_CONTRACT_CALL_METHODS,
   MARKET_CONTRACT_VIEW_METHODS,
@@ -23,13 +24,14 @@ import { cannotFetchMarketPlaceError } from "./../error/cannotFetchMarketPlaceEr
 import { cannotFetchStoreError } from "./../error/cannotFetchStoreError";
 import { cannotMakeOfferError } from "./../error/cannotMakeOfferError";
 import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
-import * as utils from './../utils/near';
+import * as nearUtils from './../utils/near';
 import { Minter } from "mintbase/lib/minter";
 import { MintbaseGraphql } from "./mintbase-graphql";
 import { getGraphQlUri } from "../utils/graphQl";
 import { CannotGetTokenError } from "../error/CannotGetTokenError";
 import { cannotGetMintersError, cannotGetThingsError } from "../error";
 import { GetStoreByOwner, GetTokensOfStoreId } from "../graphql_types";
+import BN from "bn.js";
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
@@ -84,7 +86,7 @@ export class MintbaseWallet extends Wallet {
         
         // this lib only supports near
         this.chain = Chain.near;
-        this.nearConfig = utils.getNearConfig(
+        this.nearConfig = nearUtils.getNearConfig(
           walletConfig.networkName, 
           walletConfig.contractName
         );
@@ -108,14 +110,12 @@ export class MintbaseWallet extends Wallet {
           apiKey: walletConfig.apiKey,
           constants: this.constants,
         });
-
-        
         
         // We only want to init, not connect yet
         // await this.connect()
 
         // We must return this format because we extend mintbase method
-        const data = { wallet: this, isConnected: false };
+        const data = { wallet: this, isConnected: this.isConnected() };
         return formatResponse({
           data,
         })
@@ -135,23 +135,104 @@ export class MintbaseWallet extends Wallet {
    * @throws {CannotGetTokenError} code: 503. If mintbase error 
    * @returns {Promise<MintbaseThing[]>}
    */
-  public async getTokenFromCurrentWallet( 
+  public async getWalletThings( 
     intent = 0
-  ): Promise<MintbaseThing[] | undefined>
+  ): Promise<any>
   {
     intent++;
-
+    const {data: details} = await this.details();
     try {
-      return await this.mintbaseGraphql?.getNanostoreTokens(0,10);
+      return await this.mintbaseGraphql?.getWalletThings(details.accountId);
+      // const response = await this.mintbaseGraphql?.getWalletThings(details.accountId);
+      // console.log('response getWalletThings: *****************', response, );
+      // return response;
     } catch (error) {
       if (intent < 20) {
         // Do a timeout await
         await firstValueFrom(timer(intent * 5000));
-        return this.getTokenFromCurrentWallet(intent)
+        return this.getWalletThings(intent)
+      } else if(intent >= 20) {
+        throw CannotGetTokenError.becauseMintbaseError();
+        
+      } 
+    }
+  }
+
+  public async getTokensFromCurrentContract( 
+    intent = 0
+  ): Promise<any>
+  {
+    if(!this.activeWallet || !this.activeWallet.isSignedIn()) {
+      console.warn('Trying to get data of no logged account.');
+      return [];
+    }
+    intent++;
+    const {data: details} = await this.details();
+    try {
+      return await this.mintbaseGraphql?.getTokensFromContract(0,10, details.contractName);
+    } catch (error) {
+      if (intent < 20) {
+        await firstValueFrom(timer(intent * 5000));
+        return this.getTokensFromCurrentContract(intent)
       } else if(intent >= 20) {
         throw CannotGetTokenError.becauseMintbaseError();
       } 
     }
+  }
+
+  /**
+   * List an item for sale in the market.
+   * @param tokenId The token id.
+   * @param storeId The token store id (contract name).
+   * @param price The listing price.
+   * @param splitOwners List of splits.
+   */
+  public async list(
+    tokenId: string,
+    storeId: string,
+    price: string,
+    options?: OptionalMethodArgs & {
+      autotransfer?: boolean
+      marketAddress?: string
+    }
+  ): Promise<ResponseData<boolean>> {
+    const account = this.activeWallet?.account()
+    const accountId = this.activeWallet?.account().accountId
+    const gas = !options?.gas ? MAX_GAS : new BN(options?.gas)
+
+    if (!account || !accountId)
+      return formatResponse({ error: 'Account is undefined.' })
+
+    const contract = new Contract(account, storeId, {
+      viewMethods:
+        this.constants.STORE_CONTRACT_VIEW_METHODS ||
+        STORE_CONTRACT_VIEW_METHODS,
+      changeMethods:
+        this.constants.STORE_CONTRACT_CALL_METHODS ||
+        STORE_CONTRACT_CALL_METHODS,
+    })
+
+    // cost for one token
+    const listCost = nearUtils.calculateListCost(1)
+
+    // @ts-ignore: method does not exist on Contract type
+    await contract.nft_approve({
+      meta: options?.meta,
+      callbackUrl: options?.callbackUrl,
+      args: {
+        autotransfer: true,
+        token_id: tokenId,
+        account_id:'market-v2-beta.mintspace2.testnet',
+        msg: JSON.stringify({
+          price: price,
+          autotransfer: true,
+        }),
+      },
+      gas: gas,
+      amount: DEPLOY_STORE_COST
+    })
+
+    return formatResponse({ data: true })
   }
 
 	/**
@@ -161,6 +242,11 @@ export class MintbaseWallet extends Wallet {
 	 * @throws {cannotGetThingsError}
 	 */
 	public async getMyThings(myStoreId: string) {
+    if(!this.activeWallet || !this.activeWallet.isSignedIn()) {
+      console.warn('Trying to get data of no logged account.');
+      return [];
+    }
+    const {data: details} = await this.details();
 		try {
 		return await this.mintbaseGraphql?.getWalletThings(myStoreId);
 		} catch (error) {
@@ -412,7 +498,7 @@ export class MintbaseWallet extends Wallet {
             // @ts-ignore: method does not exist on Contract type
             await contract.nft_transfer({
                 args: { 
-                    receiver_id: accountId, 
+                    receiver_id: 'nanostore.testnet', 
                     token_id: tokenId 
                 },
                 gas: MAX_GAS,

@@ -71,15 +71,6 @@ enum NearNetwork {
 
 type NanostoreNetwork = Network | NearNetwork;
 
-enum MetadataFieldExtension {
-  Printable = 'printable'
-};
-
-interface Metadata extends MintMetadata {
-  [MetadataFieldExtension.Printable]?: boolean
-};
-
-
 type OptionalMethodArgs = {
   gas?: string
   amount?: string
@@ -153,42 +144,12 @@ export interface MintbaseNftMetadata {
   animation_size: number;
 }
 
-enum MetadataField {
-  Id = 'id',
-  Title = 'title',
-  Category = 'category',
-  Description = 'description',
-  Media = 'media',
-  Media_hash = 'media_hash',
-  Tags = 'tags',
-  Image_preview = 'imagePreview',
-  Copies = 'copies',
-  Extra = 'extra',
-  External_url = 'external_url',
-  Background_color = 'background_color',
-  Animation_url = 'animation_url',
-  Animation_hash = 'animation_hash',
-  Youtube_url = 'youtube_url',
-  UpdatedAt = 'updated_at',
-  Document = 'document',
-  Document_hash = 'document_hash',
-  Lock = 'lock',
-  Visibility = 'visibility',
-  Chain = 'chain',
-  Store = 'store',
-  Royalty = 'royalty',
-  Royalty_perc = 'royalty_perc',
-  SplitRevenue = 'split_revenue',
-}
-
 export {
   MintbaseConstants,
   NearWalletDetails,
   NearToken,
   Account,
   Visibility,
-  MetadataField,
-  Metadata,
   NearRoyalties,
   CloudStorageConstants,
   OptionalMethodArgs,

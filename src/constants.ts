@@ -60,15 +60,7 @@ export const STORE_CONTRACT_CALL_METHODS = [
   'batch_change_minters'
 ]
 
-export const MARKET_CONTRACT_VIEW_METHODS = [
-  
-]
 
-export const MARKET_CONTRACT_CALL_METHODS = [
-  'make_offer',
-  'accept_and_transfer',
-  'withdraw_offer',
-]
 
 export const FACTORY_CONTRACT_VIEW_METHODS = []
 export const FACTORY_CONTRACT_CALL_METHODS = ['create_store']

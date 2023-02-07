@@ -2,7 +2,8 @@
 
 import {
   Contract,
-  ConnectedWalletAccount
+  ConnectedWalletAccount,
+  utils
 } from 'near-api-js';
 
 import {
@@ -18,7 +19,10 @@ import {
   STORE_CONTRACT_CALL_METHODS,
   FACTORY_CONTRACT_NAME,
   MAX_GAS,
-  ONE_YOCTO
+  ONE_YOCTO,
+  MARKET_CONTRACT_CALL_METHODS,
+  TWENTY_FOUR,
+  MARKET_CONTRACT_VIEW_METHODS
 } from './constants';
 import { BehaviorSubject, shareReplay } from 'rxjs';
 import { CannotConnectError } from './error/cannotConectError';
@@ -30,14 +34,15 @@ import { CannotGetTokenError } from './error/CannotGetTokenError';
 import { cannotFetchStoreError } from './error/cannotFetchStoreError';
 import { cannotFetchMarketPlaceError } from './error/cannotFetchMarketPlaceError';
 import { GetStoreByOwner, GetTokensOfStoreId } from './graphql_types';
-import { NanostoreWallet } from './nanostore/nanostore-wallet';
 import { Chain } from 'mintbase';
 import { NANOSTORE_CONTRACT_NAME } from './nanostore/constants';
 import { TEST_METADATA } from './constants/test.data';
 
+import * as nearUtils from './utils/near';
+import { cannotMakeOfferError } from './error/cannotMakeOfferError';
+
 /** 
- * Object that contains the methods and variables necessary to interact with the near wallet 
- * At the moment only the connection to the mintbase wallet is supported
+ * Legacy Object previous to nanostore.
  */
 export class NearWallet {
   /** Internal subject that stores login state */
@@ -93,6 +98,58 @@ export class NearWallet {
 
   }
 
+  public async buyToken() {
+
+    const account = this.mintbaseWallet.activeWallet?.account()
+    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+    const gas = MAX_GAS;
+    const timeout = TWENTY_FOUR;
+
+    if (!account || !accountId) throw cannotMakeOfferError.becauseUserNotFound();
+
+    const contract = new Contract(
+      account,
+      'market-v2-beta.mintspace2.testnet',
+      {
+        viewMethods:
+          MARKET_CONTRACT_VIEW_METHODS,
+        changeMethods:
+          MARKET_CONTRACT_CALL_METHODS,
+      }
+    )
+    try {
+
+      
+        // @ts-ignore: method does not exist on Contract type
+        await contract.buy({
+            args: {
+              nft_contract_id: 'nanostore_store.dev-1675363616907-84002391197707', //  ["0:amber_v2.tenk.testnet"],
+              token_id: '10'
+            },
+            gas,
+            amount: '2000000000000000000000000',
+        })
+    } catch (error) {
+        console.log('error: ', error)
+        throw cannotMakeOfferError.becauseMintbaseError();
+    }
+  }
+
+  /**
+   * 
+   */
+  public async setPriceForToken() {
+    try {
+      await this.mintbaseWallet.list(
+        '10',
+        'nanostore_store.dev-1675363616907-84002391197707',
+        '1000000000000000000000000'
+      );
+    } catch (error) {
+      console.log('List error: ', error);
+    }
+  }
+
   /**
    * @description initializes mintbase wallet custom object and sets graphql object
    * @description sets logged observable state
@@ -102,7 +159,8 @@ export class NearWallet {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     try {
-      await this.mintbaseWallet.init(this.mintbaseWallet.walletConfig);
+      const initResponse = await this.mintbaseWallet.init(this.mintbaseWallet.walletConfig);
+      console.log('Init response: ', initResponse);
     } catch (error) {
         console.log('Init error: ', error);
     }
@@ -111,16 +169,11 @@ export class NearWallet {
     
     if(this.mintbaseWallet.activeWallet.isSignedIn()) {
         this._isLogged$.next(true);
-        
         const walletDetails = await this.getMintbaseAccountData();
         console.log('Details ... ', walletDetails)
     } else {
         this._isLogged$.next(false);
     }
-    // await this.nanostoreWallet.connect();
-    // const minters = await this.nanostoreWallet.getMinters();
-    // console.log('los minters: ', minters);
-    
   }
 
   /**
@@ -141,7 +194,7 @@ export class NearWallet {
     
     try {
       // If the wallet is not connected, we go to the connection page
-      await this.mintbaseWallet.connect({ requestSignIn: true });
+      await this.mintbaseWallet.connect({ contractAddress: NANOSTORE_CONTRACT_NAME,  requestSignIn: true });
       this._isLogged$.next(true);
     } catch (error) {
       this._isLogged$.next(false);
@@ -149,13 +202,39 @@ export class NearWallet {
     }
   }
 
-  public async pruebas1() {
+  public async deposit_storage(options?: any) {
+    if(!this.mintbaseWallet || !this.mintbaseWallet.activeWallet) return;
+    const account = this.mintbaseWallet.activeWallet.account();
 
-    await this.mintbaseWallet.grantMinter('eurega.testnet', NANOSTORE_CONTRACT_NAME);
-  }
+    const listCost = nearUtils.calculateListCost(1);
 
-  public async pruebas2(file: File) {
-    await this.printableNftMint(file)
+    const contract = new Contract(account, 'market-v2-beta.mintspace2.testnet', {
+      viewMethods:
+        STORE_CONTRACT_VIEW_METHODS,
+      changeMethods:
+        MARKET_CONTRACT_CALL_METHODS,
+    });
+
+    const executeParams = {
+      contractAddress: account.accountId, 
+      marketAddress: 'market-v2-beta.mintspace2.testnet', 
+      tokenId: '1', 
+      price: '1'
+    };
+    
+    
+    try {
+      // @ts-ignore: method does not exist on Contract type
+      await contract.deposit_storage({
+        args: {},
+        gas: MAX_GAS,
+        amount: utils.format.parseNearAmount(listCost.toString())
+      });
+    } catch (error) {
+        console.log('relol')
+    }
+    
+    
   }
 
   /**
@@ -202,10 +281,10 @@ export class NearWallet {
         /*
         await this.mintbaseWallet.mint(
           1,
-          NANOSTORE_CONTRACT_NAME,
+          'marcexplorins.mintspace2.testnet',
           undefined,
           undefined,
-          'category...',
+          'category pruebas ...',
           {
             callbackUrl: "",
             meta,
@@ -213,7 +292,6 @@ export class NearWallet {
             metadataId
           })
         */
-        
         
           
         // @ts-ignore: method does not exist on Contract type
@@ -224,7 +302,7 @@ export class NearWallet {
               owner_id: "nanostore.testnet",
               metadata: {
                 reference: metadataId,
-                extra: 'El extra'
+                extra: 'Category'
              },
               royalty_args: null,
               num_to_mint:1
@@ -232,6 +310,7 @@ export class NearWallet {
           gas: MAX_GAS,
           amount: ONE_YOCTO,
         });
+        
         
         
     } catch (error) {
@@ -292,13 +371,29 @@ export class NearWallet {
    * ------------------------------------------------------------------------------------
    * @returns {Promise<MintbaseThing[]>}
    */
-  public async getTokenFromCurrentWallet( 
+  public async getThingsFromCurrentWallet( 
     intent = 0
   ): Promise<MintbaseThing[] | undefined>
   {
     if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
 
-    return this.mintbaseWallet.getTokenFromCurrentWallet();
+    return this.mintbaseWallet.getWalletThings();
+  }
+
+  /**
+   * TODO: check retryFetch logic
+   * TODO: type token returned
+   * @description Returns the things that belong to the connected user
+   * ------------------------------------------------------------------------------------
+   * @returns {Promise<MintbaseThing[]>}
+   */
+  public async getTokenFromCurrentContract( 
+    storeId: string
+  ): Promise<MintbaseThing[] | undefined>
+  {
+    if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();
+
+    return await this.mintbaseWallet.getMyThings(storeId);
   }
 
   /**
