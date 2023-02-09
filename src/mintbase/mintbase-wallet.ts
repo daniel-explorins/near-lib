@@ -7,15 +7,11 @@ import { firstValueFrom, timer } from "rxjs";
 import { MintbaseWalletConfig } from "./../types";
 import { initializeExternalConstants } from "./../utils/external-constants";
 import { 
-  CLOUD_URI,
   DEPLOY_STORE_COST,
   FACTORY_CONTRACT_NAME,
-  MARKET_CONTRACT_CALL_METHODS,
-  MARKET_CONTRACT_VIEW_METHODS,
   MAX_GAS,
   ONE_YOCTO,
   STORE_CONTRACT_CALL_METHODS,
-
   STORE_CONTRACT_VIEW_METHODS,
   TWENTY_FOUR } from "./../constants";
 import { CannotConnectError } from "./../error/cannotConectError";
@@ -32,6 +28,7 @@ import { CannotGetTokenError } from "../error/CannotGetTokenError";
 import { cannotGetMintersError, cannotGetThingsError } from "../error";
 import { GetStoreByOwner, GetTokensOfStoreId } from "../graphql_types";
 import BN from "bn.js";
+import { MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "./constants";
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
@@ -327,12 +324,8 @@ export class MintbaseWallet extends Wallet {
       this.constants.MARKET_ADDRESS ||
       `0.${this.constants.FACTORY_CONTRACT_NAME || FACTORY_CONTRACT_NAME}`,
       {
-        viewMethods:
-          this.constants.MARKET_CONTRACT_VIEW_METHODS ||
-          MARKET_CONTRACT_VIEW_METHODS,
-        changeMethods:
-          this.constants.MARKET_CONTRACT_CALL_METHODS ||
-          MARKET_CONTRACT_CALL_METHODS,
+        viewMethods:MINTBASE_MARKET_CONTRACT_VIEW_METHODS,
+        changeMethods: MINTBASE_MARKET_CONTRACT_CALL_METHODS,
       }
     )
     try {
