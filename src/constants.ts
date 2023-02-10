@@ -34,7 +34,8 @@ export const BASE_ARWEAVE_URI = 'https://arweave.net'
 export const DEFAULT_APP_NAME = 'Mintbase.js'
 export const NEAR_LOCAL_STORAGE_KEY_SUFFIX = '_wallet_auth_key'
 
-// TODO: pull this from somewhere else?
+export const NANOSTORE_FACTORY_CONTRACT_NAME = 'nanostore3.testnet'
+
 export const FACTORY_CONTRACT_NAME = 'mintspace1.testnet'
 
 export const STORE_CONTRACT_VIEW_METHODS = [
@@ -62,8 +63,8 @@ export const STORE_CONTRACT_CALL_METHODS = [
 
 
 
-export const FACTORY_CONTRACT_VIEW_METHODS = []
-export const FACTORY_CONTRACT_CALL_METHODS = ['create_store']
+export const NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS = []
+export const NANOSTORE_FACTORY_CONTRACT_CALL_METHODS = ['create_store']
 
 export const CLOUD_STORAGE_CONFIG = {
   apiKey: process.env.MINTBASEJS_FIREBASE_PUBLIC_API_KEY,
@@ -78,7 +79,7 @@ export const DEFAULT_ROYALTY_PERCENT = 1000
 export const MAX_GAS = new BN('200000000000000')
 export const ONE_YOCTO = new BN('1')
 export const ZERO = new BN('0')
-export const DEPLOY_STORE_COST = new BN('7000000000000000000000000')
+export const DEPLOY_STORE_COST = new BN('10500000000000000000000000')
 
 export const VALID_FILE_FORMATS: { [key: string]: string[] } = {
   [MetadataField.Media]: ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'],

@@ -1,14 +1,16 @@
 import { ConnectedWalletAccount, Contract, utils } from "near-api-js";
 import { BehaviorSubject, shareReplay } from "rxjs";
-import { FACTORY_CONTRACT_NAME, MAX_GAS, ONE_YOCTO, TWENTY_FOUR } from "../constants";
+import { DEPLOY_STORE_COST, FACTORY_CONTRACT_NAME, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_NAME, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, ONE_YOCTO, TWENTY_FOUR } from "../constants";
 import { CannotConnectError, CannotDisconnectError, CannotGetTokenError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
 import { MintbaseWallet } from "../mintbase/mintbase-wallet";
-import { Chain, NearNetwork, NearWalletDetails, Network } from "../types";
+import { Chain, NearNetwork, NearWalletDetails, Network, OptionalMethodArgs } from "../types";
 import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS } from "./constants";
 import * as nearUtils from './../utils/near';
 import { TEST_METADATA } from "./test.data";
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
+import BN from "bn.js";
+import { getStoreNameFromAccount } from "../utils/nanostore";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
@@ -59,7 +61,7 @@ export class Nanostore {
             apiKey, 
             networkName: Network.testnet, 
             chain: Chain.near, 
-            contractName: NANOSTORE_CONTRACT_NAME // Mintbase: FACTORY_CONTRACT_NAME
+            contractName: NANOSTORE_FACTORY_CONTRACT_NAME // Mintbase: FACTORY_CONTRACT_NAME
           });
         break;
       default:
@@ -107,14 +109,22 @@ export class Nanostore {
   }
 
   /**
-   * 
+   * @description set price for token in mintbase marketplace
+   * ----------------------------
+   * @param tokenId id of token inside the store 1,2,3 ...
+   * @param price Price in nears
    */
-  public async setPriceForToken() {
+  public async setPriceForToken(
+	tokenId: number,
+	price: number
+  ) {
+	const priceInNear = utils.format.parseNearAmount(price.toString());
+	if(!priceInNear) throw new Error('not price provided');
     try {
       await this.mintbaseWallet.list(
-        '10',
-        'nanostore_store.dev-1675363616907-84002391197707',
-        '1000000000000000000000000'
+        tokenId.toString(),
+        NANOSTORE_CONTRACT_NAME,
+        priceInNear
       );
     } catch (error) {
       console.log('List error: ', error);
@@ -174,6 +184,61 @@ export class Nanostore {
   }
 
   /**
+   * @description Creates a store. For future developments.
+   * ------------------------------------------
+   * @param storeId Store name
+   * @param symbol Store symbol
+   */
+  public async deployStore(
+    symbol: string,
+    options?: OptionalMethodArgs & { attachedDeposit?: string; icon?: string }
+  ): Promise<boolean> {
+    const account = this.mintbaseWallet.activeWallet?.account()
+    const accountId = this.mintbaseWallet.activeWallet?.account().accountId
+
+	if (!account || !accountId) throw new Error('Undefined account');
+
+    const gas = MAX_GAS;
+	// console.log('saccount: ', account);
+
+    const contract = new Contract(
+      account,
+      NANOSTORE_FACTORY_CONTRACT_NAME,
+      {
+          viewMethods: NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS,
+          changeMethods: NANOSTORE_FACTORY_CONTRACT_CALL_METHODS
+      }
+    )
+
+    const storeData = {
+      owner_id: accountId,
+      metadata: {
+        spec: 'nft-1.0.0',
+        name: getStoreNameFromAccount(account),
+        symbol: symbol.replace(/[^a-z0-9]+/gim, '').toLowerCase(),
+        icon: options?.icon ?? MINTBASE_32x32_BASE64_DARK_LOGO,
+        base_uri: null,
+        reference: null,
+        reference_hash: null,
+      },
+    }
+
+    const attachedDeposit = DEPLOY_STORE_COST
+      //: new BN(options?.attachedDeposit)
+
+    // @ts-ignore: method does not exist on Contract type
+    await contract.create_store({
+      meta: options?.meta,
+      callbackUrl: options?.callbackUrl,
+      args: storeData,
+      gas,
+      amount: attachedDeposit,
+    })
+
+    return true;
+  }
+
+  /**
    * @description 
    * ----------------------------------------------------
    * @throws {Error}
@@ -186,7 +251,6 @@ export class Nanostore {
 
     const contract = new Contract(
         account, 
-        this.mintbaseWallet.constants.FACTORY_CONTRACT_NAME || 
         MINTBASE_MARKETPLACE_TESTNET, 
         {
             viewMethods:
@@ -300,11 +364,14 @@ export class Nanostore {
    * TODO: check retryFetch logic
    * TODO: type token returned
    * @description Returns all the tokens minted with nanostore contract
+   * @param offset
+   * @param limit
    * ------------------------------------------------------------------------------------
    * @throws {CannotGetTokenError}
    */
     public async getAllTokensFromNanostore( 
-        storeId: string
+        offset: number, 
+		limit: number
     ): Promise<any>
     {
         if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();

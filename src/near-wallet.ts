@@ -112,7 +112,6 @@ export class NearWallet {
    */
   public async connect(): Promise<void>
   {
-    console.log(' ************* this.mintbaseWallet ****************** ', this.mintbaseWallet)
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
     
     if (this.mintbaseWallet.isConnected()) return;
