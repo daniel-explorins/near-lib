@@ -88,7 +88,7 @@ export class Octoprint {
     }
   }
 
-  async sliceFile(file: any, profile: any) {
+  async sliceFile(file: File, profile: any) {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("profile", profile);
@@ -109,5 +109,19 @@ export class Octoprint {
     console.log(json);
   }
 
-  
+  async uploadFile(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const response = await fetch("http://localhost:5000/api/files/local", {
+      method: "POST",
+      headers: {
+        "X-Api-Key": '68743698937C46BA944BB892AA19D031'
+      },
+      body: formData
+    });
+    
+    const json = await response.json();
+    console.log(json);
+  }
 }
