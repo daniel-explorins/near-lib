@@ -4,14 +4,15 @@ import { DEPLOY_STORE_COST, FACTORY_CONTRACT_NAME, MAX_GAS, MINTBASE_32x32_BASE6
 import { CannotConnectError, CannotDisconnectError, CannotGetTokenError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
 import { MintbaseWallet } from "../mintbase/mintbase-wallet";
-import { Chain, NearNetwork, NearWalletDetails, Network, OptionalMethodArgs } from "../types";
+import { Chain, NearNetwork, NearTransaction, NearWalletDetails, Network, OptionalMethodArgs } from "../types";
 import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS } from "./constants";
 import * as nearUtils from './../utils/near';
 import { TEST_METADATA } from "./test.data";
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
 import BN from "bn.js";
 import { getStoreNameFromAccount } from "../utils/nanostore";
-
+import { JsonToUint8Array } from "./../utils/near";
+const elliptic = require("elliptic").ec;
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
@@ -82,7 +83,7 @@ export class Nanostore {
     // Mitbase market connection
     const contract = new Contract(
       account,
-      'market-v2-beta.mintspace2.testnet',
+      MINTBASE_MARKETPLACE_TESTNET,
       {
         viewMethods:
             MINTBASE_MARKET_CONTRACT_VIEW_METHODS,
@@ -92,15 +93,15 @@ export class Nanostore {
     )
     try {
 
-      
+      const amount = utils.format.parseNearAmount('16')
         // @ts-ignore: method does not exist on Contract type
         await contract.buy({
             args: {
               nft_contract_id: 'nanostore_store.dev-1675363616907-84002391197707', //  ["0:amber_v2.tenk.testnet"],
-              token_id: '10'
+              token_id: '7'
             },
             gas,
-            amount: '2000000000000000000000000',
+            amount: amount,
         })
     } catch (error) {
         console.log('error: ', error)
@@ -108,26 +109,80 @@ export class Nanostore {
     }
   }
 
-  /**
-   * @description set price for token in mintbase marketplace
-   * ----------------------------
-   * @param tokenId id of token inside the store 1,2,3 ...
-   * @param price Price in nears
-   */
-  public async setPriceForToken(
-	tokenId: number,
-	price: number
+  public async deposit_and_set_price(
+    tokenId: number,
+	  price: number
   ) {
-	const priceInNear = utils.format.parseNearAmount(price.toString());
-	if(!priceInNear) throw new Error('not price provided');
+
+    const priceInNear = utils.format.parseNearAmount(price.toString());
+	  if(!priceInNear) throw new Error('not price provided');
+
+    const args = {};
+    const args2 = {
+      autotransfer: true,
+      token_id: tokenId.toString(),
+      account_id:'market-v2-beta.mintspace2.testnet',
+      msg: JSON.stringify({
+        price: priceInNear.toString(),
+        autotransfer: true,
+      })
+    }
+    
+    const args_base64 = JsonToUint8Array(args);
+    const args2_base64 = JsonToUint8Array(args2);
+
+    const market_cost = 0.02;
+    const listCost = nearUtils.calculateListCost(1);
+    const deposit = utils.format.parseNearAmount(listCost.toString()) ?? '0';
+    const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
+
+    const ec = new elliptic("secp256k1");
+    // Generate a new key pair
+    const keyPair = ec.genKeyPair();
+
+  // Get the public key in hexadecimal format
+  const publicKey = keyPair.getPublic().encode("hex");
+
+    const transactions: NearTransaction[] = [
+      {
+        functionCalls: [
+          {
+            args: args_base64,
+            deposit: new BN(market_deposit),
+            gas: MAX_GAS,
+            methodName: "deposit_storage"
+          }
+        ],
+        signerId: "",
+        receiverId: MINTBASE_MARKETPLACE_TESTNET,
+        publicKey: publicKey,
+        actions: [],
+        nonce: 0,
+        blockHash: args_base64,
+        encode: () => args_base64
+      },
+      {
+        functionCalls: [
+          {
+            args: args2_base64,
+            deposit: new BN(deposit),
+            gas: MAX_GAS,
+            methodName: "nft_approve"
+          }
+        ],
+        signerId: "",
+        receiverId: NANOSTORE_CONTRACT_NAME,
+        publicKey: publicKey,
+        actions: [],
+        nonce: 0,
+        blockHash: args_base64,
+        encode: () => args_base64
+      }
+    ];
     try {
-      await this.mintbaseWallet.list(
-        tokenId.toString(),
-        NANOSTORE_CONTRACT_NAME,
-        priceInNear
-      );
+      await this.mintbaseWallet.executeMultipleTransactions({transactions});
     } catch (error) {
-      console.log('List error: ', error);
+      console.log(' ****************  error: ', error);
     }
   }
 
@@ -138,20 +193,20 @@ export class Nanostore {
    */
   public async init(): Promise<void> {
     if(!this.mintbaseWallet) throw CannotConnectError.becauseMintbaseNotConnected();
-    
+    let initResponse;
     try {
-      const initResponse = await this.mintbaseWallet.init(this.mintbaseWallet.walletConfig);
-      console.log('Init response: ', initResponse);
+      initResponse = await this.mintbaseWallet.init(this.mintbaseWallet.walletConfig);
+      console.log('Init response --------------------------- : ', initResponse);
     } catch (error) {
         console.log('Init error: ', error);
     }
 
     if(!this.mintbaseWallet.activeWallet) throw CannotConnectError.becauseMintbaseNotConnected();
-    
+   
     if(this.mintbaseWallet.activeWallet.isSignedIn()) {
         this._isLogged$.next(true);
         const walletDetails = await this.getMintbaseAccountData();
-        console.log('Details ... ', walletDetails)
+        console.log('Connection Details ... ', walletDetails)
     } else {
         this._isLogged$.next(false);
     }
@@ -238,38 +293,7 @@ export class Nanostore {
     return true;
   }
 
-  /**
-   * @description 
-   * ----------------------------------------------------
-   * @throws {Error}
-   */
-  public async deposit_storage() {
-    if(!this.mintbaseWallet || !this.mintbaseWallet.activeWallet) return;
-    const account = this.mintbaseWallet.activeWallet.account();
-
-    const listCost = nearUtils.calculateListCost(1);
-
-    const contract = new Contract(
-        account, 
-        MINTBASE_MARKETPLACE_TESTNET, 
-        {
-            viewMethods:
-                MINTBASE_MARKET_CONTRACT_VIEW_METHODS,
-            changeMethods:
-                MINTBASE_MARKET_CONTRACT_CALL_METHODS,
-        });
-    
-    try {
-      // @ts-ignore: method does not exist on Contract type
-      await contract.deposit_storage({
-        args: {},
-        gas: MAX_GAS,
-        amount: utils.format.parseNearAmount(listCost.toString())
-      });
-    } catch (error) {
-        throw new Error('Deposit storage error: ' + error);
-    }
-  }
+  
 
     /**
      * @description Mint an nft that could be 3d printed
@@ -294,7 +318,7 @@ export class Nanostore {
             type: 'mint',
             args: {
                 contractAddress: NANOSTORE_CONTRACT_NAME,
-                amount: 1,
+                amount: numToMint,
                 thingId: `${metadataId}:${NANOSTORE_CONTRACT_NAME}`,
             }
         });
@@ -371,7 +395,7 @@ export class Nanostore {
    */
     public async getAllTokensFromNanostore( 
         offset: number, 
-		limit: number
+		    limit: number
     ): Promise<any>
     {
         if(!this.mintbaseWallet) throw CannotGetTokenError.becauseMintbaseNotConnected();

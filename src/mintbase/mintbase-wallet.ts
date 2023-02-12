@@ -87,8 +87,8 @@ export class MintbaseWallet extends Wallet {
           walletConfig.networkName, 
           walletConfig.contractName
         );
-        this.keyStore = new keyStores.BrowserLocalStorageKeyStore();
 
+        this.keyStore = new keyStores.BrowserLocalStorageKeyStore();
         
           const connectConfig = {
           deps: { keyStore: new keyStores.BrowserLocalStorageKeyStore() },
@@ -119,6 +119,7 @@ export class MintbaseWallet extends Wallet {
 
       } catch (error: any) {
         // @TODO throw custom error
+        console.log('Candemoooor ', error)
         throw error;
       }
     }

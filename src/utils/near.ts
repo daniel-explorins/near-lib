@@ -38,7 +38,17 @@ export const getNearConfig = (
  }
 }
 
+export const JsonToUint8Array = function(json: Object)
+{
+	var str = JSON.stringify(json, null, 0);
+	var ret = new Uint8Array(str.length);
+	for (var i = 0; i < str.length; i++) {
+		ret[i] = str.charCodeAt(i);
+	}
+	return ret
+};
+
 export const calculateListCost = (amount: number): number => {
-  const cost = 0.0244 * amount
+  const cost = 0.0144 * amount
   return cost
 }
