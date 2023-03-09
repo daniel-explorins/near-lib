@@ -1,6 +1,8 @@
 import { MintMetadata } from "mintbase";
 
 export const NANOSTORE_CONTRACT_NAME = 'nanostore_store.dev-1675363616907-84002391197707';
+// Only for develop purposes
+export const NANOSTORE_PRIVATE_KEY = 'ed25519:2vJ2QNSgeuEJCtmpEnsywqpTpvqEfKo9Ysac7AeFLRUzYJJmMfCNyg6DTtX27RePCUTK9dXxLZ3bw7ERdGV8zCVA';
 
 export enum MetadataField {
     Id = 'id',
