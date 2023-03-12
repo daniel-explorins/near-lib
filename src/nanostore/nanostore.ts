@@ -1,17 +1,18 @@
-import { ConnectedWalletAccount, Contract, utils } from "near-api-js";
+import { ConnectedWalletAccount, Contract, Near, utils } from "near-api-js";
 import { BehaviorSubject, shareReplay } from "rxjs";
 import { DEPLOY_STORE_COST, FACTORY_CONTRACT_NAME, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_NAME, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, ONE_YOCTO, TWENTY_FOUR } from "../constants";
 import { CannotConnectError, CannotDisconnectError, CannotGetTokenError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
 import { MintbaseWallet } from "../mintbase/mintbase-wallet";
 import { Chain, NearNetwork, NearTransaction, NearWalletDetails, Network, OptionalMethodArgs } from "../types";
-import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS } from "./constants";
+import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY } from "./constants";
 import * as nearUtils from './../utils/near';
 import { TEST_METADATA } from "./test.data";
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
 import BN from "bn.js";
 import { getStoreNameFromAccount } from "../utils/nanostore";
 import { JsonToUint8Array } from "./../utils/near";
+import * as nearAPI from "near-api-js";
 const elliptic = require("elliptic").ec;
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
@@ -232,6 +233,104 @@ export class Nanostore {
       // If the wallet is not connected, we go to the connection page
       await this.mintbaseWallet.connect({ contractAddress: NANOSTORE_CONTRACT_NAME,  requestSignIn: true });
       this._isLogged$.next(true);
+    } catch (error) {
+      this._isLogged$.next(false);
+      throw CannotConnectError.becauseMintbaseLoginFail();
+    }
+  }
+
+  /**
+   * @description Usually this method must be called on login button action
+   * @description Currently making a connection to the mintbase wallet
+   * ------------------------------------------------------------------------------------
+   * @throws {CannotConnectError} if connection to mintbase could not be made
+   */
+  public async connectNanostore(): Promise<void>
+  {
+    try {
+      const { keyStores, KeyPair, connect: nearConnect, WalletConnection  } = nearAPI;
+      const myKeyStore = new keyStores.InMemoryKeyStore();
+      const PRIVATE_KEY = NANOSTORE_PRIVATE_KEY;
+      // creates a public / private key pair using the provided private key
+      const keyPair = KeyPair.fromString(PRIVATE_KEY);
+      // adds the keyPair you created to keyStore
+      await myKeyStore.setKey("testnet", NANOSTORE_CONTRACT_NAME, keyPair);
+
+      const connectionConfig = {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        contractName: NANOSTORE_CONTRACT_NAME,
+        networkId: "testnet",
+        deps: {keyStore: myKeyStore}, // first create a key store 
+        nodeUrl: "https://rpc.testnet.near.org",
+        walletUrl: "https://wallet.testnet.near.org",
+        helperUrl: "https://helper.testnet.near.org",
+        explorerUrl: "https://explorer.testnet.near.org",
+      };
+      const nearConnection = await nearConnect(connectionConfig)
+      // const nearConnection = await nearConnect(connectionConfig);
+      const activeWallet = new WalletConnection(nearConnection, 'Nanostore.js');
+      const accountId = activeWallet.getAccountId();
+      const activeAccount = await activeWallet.account()
+
+      // console.log(' ==== activeAccount: ', activeAccount);
+      // console.log(' ==== activeWallet: ', activeWallet);
+
+      const account = await nearConnection.account(NANOSTORE_CONTRACT_NAME);
+      const balance = await account.getAccountBalance();
+
+      console.log(' ==== account: ', account);
+      console.log(' ==== balance: ', balance);
+
+      const contract = new Contract(
+        account,
+        NANOSTORE_CONTRACT_NAME,
+        {
+            viewMethods: NANOSTORE_CONTRACT_VIEW_METHODS,
+            changeMethods: NANOSTORE_CONTRACT_CALL_METHODS
+        }
+      )
+      
+      try {
+        // @ts-ignore: method does not exist on Contract type
+        const granting  = await contract.grant_printer({
+          meta: null,
+          callbackUrl: '',
+          args: {"account_id": 'nanostore3.testnet'},
+          gas: MAX_GAS,
+          amount: ONE_YOCTO,
+        });
+
+        console.log('grant_printer ..........', granting )
+      } catch (error) {
+         throw error;
+      }
+      
+
+      try {
+        // @ts-ignore: method does not exist on Contract type
+        const printers  = await contract.list_printers();
+
+        console.log('printers ..........', printers )
+      } catch (error) {
+        
+      }
+
+      try {
+        // @ts-ignore: method does not exist on Contract type
+        const response = await contract.check_is_minter({
+          "account_id": 'nanostore2.testnet'
+        });
+
+        console.log('response', response)
+    } catch (error) {
+      console.log(' ==== ERROR ==== ', error)
+        throw CannotMint3DToken.becauseContractError();
+    }
+
+
+
     } catch (error) {
       this._isLogged$.next(false);
       throw CannotConnectError.becauseMintbaseLoginFail();
