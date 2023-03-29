@@ -7,7 +7,7 @@ import {
 
 import {
   MintbaseThing,
-  NearNetwork,
+  NearNetwork, 
   NearWalletDetails,
   Network,
   NetworkConfig,

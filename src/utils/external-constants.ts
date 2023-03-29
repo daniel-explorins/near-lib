@@ -1,5 +1,5 @@
 import 'isomorphic-unfetch'
-import { MintbaseConstants, Network } from '../types'
+import { MintbaseConstants, NearNetwork, Network } from '../types'
 import { CLOUD_URI, API_VERSION } from '../constants'
 import { retryFetch } from './retryFetch'
 
@@ -8,7 +8,7 @@ export const initializeExternalConstants = async ({
   networkName,
 }: {
   apiKey?: string
-  networkName?: Network
+  networkName?: NearNetwork
 }): Promise<MintbaseConstants> => {
   // Check if this value can change in the future
   const url = `${CLOUD_URI}/developer`

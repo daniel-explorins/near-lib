@@ -1,8 +1,22 @@
 import { MintMetadata } from "mintbase";
 
-export const NANOSTORE_CONTRACT_NAME = 'nanostore_store.dev-1675363616907-84002391197707';
+export const NANOSTORE_CONTRACT_NAME = 'storepruebas1.nanostore.testnet'; // 'nanostore_store.dev-1675363616907-84002391197707'
+
+export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
 // Only for develop purposes
-export const NANOSTORE_PRIVATE_KEY = 'ed25519:2vJ2QNSgeuEJCtmpEnsywqpTpvqEfKo9Ysac7AeFLRUzYJJmMfCNyg6DTtX27RePCUTK9dXxLZ3bw7ERdGV8zCVA';
+export const NANOSTORE_PRIVATE_KEY = 'ed25519:2rm3GT6J15JmNZNhaD8zxiqsf7Pdb1P6wCJiFntZRGRhseoFo7CRV1YgeFpuatyAPmpuYjNziovyZYJdJnVLxXBP';
+
+export const TESTNET_CONFIG = {
+  networkId: "testnet",
+  nodeUrl: "https://rpc.testnet.near.org",
+  contractName: NANOSTORE_CONTRACT_NAME,
+  walletUrl: "https://wallet.testnet.near.org",
+  helperUrl: "https://helper.testnet.near.org",
+  explorerUrl: "https://explorer.testnet.near.org",
+  headers: {
+    "Content-Type": "application/json",
+  },
+};
 
 export enum MetadataField {
     Id = 'id',
@@ -41,12 +55,18 @@ export enum MetadataField {
   };
 
   export const NANOSTORE_CONTRACT_VIEW_METHODS = [
-    'list_minters'
+    'list_minters',
+    'list_printers',
+    'check_is_minter',
+    'get_owner'
   ]
   
   export const NANOSTORE_CONTRACT_CALL_METHODS = [
     'nft_batch_mint',
+    'nft_batch_print',
+    'nft_deposit_print',
     'nft_batch_approve',
+    'grant_printer',
     'nft_approve',
     'grant_minter',
     'revoke_minter',

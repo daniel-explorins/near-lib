@@ -5,7 +5,6 @@ import { formatResponse, ResponseData } from "mintbase/lib/utils/responseBuilder
 import { connect, Contract, keyStores, WalletAccount } from "near-api-js";
 import { firstValueFrom, timer } from "rxjs";
 import { MintbaseWalletConfig } from "./../types";
-import { initializeExternalConstants } from "./../utils/external-constants";
 import { 
   DEPLOY_STORE_COST,
   FACTORY_CONTRACT_NAME,
@@ -66,6 +65,7 @@ export class MintbaseWallet extends Wallet {
       
       try {
         // @TODO: do this with nanostore constants ?
+        /*
         this.constants = await initializeExternalConstants({
           apiKey: walletConfig.apiKey,
           networkName: walletConfig.networkName,
@@ -76,6 +76,7 @@ export class MintbaseWallet extends Wallet {
           chain: Chain.near,
           constants: this.constants,
         });
+        */
 
         this.networkName = walletConfig.networkName;
 
