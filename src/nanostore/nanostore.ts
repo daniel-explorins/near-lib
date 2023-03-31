@@ -1,10 +1,10 @@
 import { Account, connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletAccount, WalletConnection } from "near-api-js";
 import { BehaviorSubject, shareReplay } from "rxjs";
-import { DEPLOY_STORE_COST, FACTORY_CONTRACT_NAME, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_NAME, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, ONE_YOCTO, STORE_CONTRACT_CALL_METHODS, STORE_CONTRACT_VIEW_METHODS, TWENTY_FOUR } from "../constants";
-import { CannotConnectError, CannotDisconnectError, CannotGetTokenError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
+import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_NAME, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, ONE_YOCTO, STORE_CONTRACT_CALL_METHODS, STORE_CONTRACT_VIEW_METHODS, TWENTY_FOUR } from "../constants";
+import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
-import { Chain, NearNetwork, NearTransaction, NearWalletDetails, Network, OptionalMethodArgs } from "../types";
-import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_OWNER, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, TESTNET_CONFIG } from "./constants";
+import { Chain, NearNetwork, NearTransaction, Network, OptionalMethodArgs } from "../types";
+import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_OWNER, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import * as nearUtils from './../utils/near';
 import { TEST_METADATA } from "./test.data";
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
@@ -13,7 +13,7 @@ import { getStoreNameFromAccount } from "../utils/nanostore";
 import { JsonToUint8Array } from "./../utils/near";
 import * as nearAPI from "near-api-js";
 
-import { QUERIES, fetchGraphQl } from '@mintbase-js/data'
+import { QUERIES, fetchGraphQl, QUERY_OPS_PREFIX } from '@mintbase-js/data'
 import { initializeExternalConstants } from "../utils/external-constants";
 import { Minter } from "mintbase/lib/minter";
 import { KeyStore } from "near-api-js/lib/key_stores";
@@ -22,6 +22,7 @@ import { API } from "mintbase";
 import { Action, createTransaction, functionCall } from "near-api-js/lib/transaction";
 import { base_decode } from "near-api-js/lib/utils/serialize";
 import { PublicKey } from "near-api-js/lib/utils";
+import { NanostoreGraphql } from "./graphql";
 
 const elliptic = require("elliptic").ec;
 /** 
@@ -41,14 +42,19 @@ export class Nanostore {
   /** Account key for connected user (you) */
   public account: ConnectedWalletAccount | undefined;
 
+  // Internal used variables
   private activeWallet?: WalletConnection;
   private activeNearConnection?: Near;
   private constants?: any;
   private keyStore?: KeyStore;
   private minter?: Minter;
-  private activeAccount?: Account;
-  private mintbaseGraphql: any;
   private api: any;
+
+  public activeAccount?: Account;
+
+  // Public acces to graphQl queries
+  public mintbaseGraphql: any;
+  public nanostoreGraphql: any;
 
   /**
    * @MF TODO: Move initialization from constructor to static public method ?
@@ -136,17 +142,19 @@ export class Nanostore {
     })
 
     this.mintbaseGraphql = new MintbaseGraphql(this.api.apiBaseUrl);
+    this.nanostoreGraphql = new NanostoreGraphql(this.api.apiBaseUrl);
 
     const keyStore = new keyStores.BrowserLocalStorageKeyStore();
     this.keyStore = keyStore;
     const _connectionObject = {
       deps: { keyStore },
-      ...TESTNET_CONFIG
+      ...NANOSTORE_TESTNET_CONFIG
     }
 
     // If the wallet is not connected, we go to the connection page
     
-    const near = await nearConnect(_connectionObject)
+    const near = await nearConnect(_connectionObject);
+
     this.activeNearConnection = near;
     this.activeWallet = new WalletAccount(near, 'Nanostore');
     let initResponse;
@@ -167,11 +175,6 @@ export class Nanostore {
     } else {
         this._isLogged$.next(false);
     }
-  }
-
-  
-  public async myFetchMethod() {
-    
   }
   
 
@@ -197,15 +200,15 @@ export class Nanostore {
     )
     try {
 
-      const amount = utils.format.parseNearAmount('16')
+      const amount = utils.format.parseNearAmount('14')
         // @ts-ignore: method does not exist on Contract type
         await contract.buy({
             args: {
-              nft_contract_id: 'nanostore_store.dev-1675363616907-84002391197707', //  ["0:amber_v2.tenk.testnet"],
+              nft_contract_id: NANOSTORE_CONTRACT_NAME, //  'nanostore_store.dev-1675363616907-84002391197707',
               token_id: '7'
             },
             gas,
-            amount: amount,
+            amount: amount, // attached deposit in yoctoNEAR
         })
     } catch (error) {
         console.log('error: ', error)
@@ -415,13 +418,14 @@ export class Nanostore {
     
   }
 
-
+  // @TODO: Lo movemos al backend
   public async payPrintedToken(token_id: string) {
-      const { keyStores, KeyPair, connect: nearConnect, WalletConnection  } = nearAPI;
+     
+      const { keyStores, KeyPair, utils, connect: nearConnect, WalletConnection  } = nearAPI;
       const myKeyStore = new keyStores.InMemoryKeyStore();
       const PRIVATE_KEY = NANOSTORE_PRIVATE_KEY;
       // creates a public / private key pair using the provided private key
-      const keyPair = KeyPair.fromString(PRIVATE_KEY);
+      const keyPair = KeyPair.fromString("ed25519:2rm3GT6J15JmNZNhaD8zxiqsf7Pdb1P6wCJiFntZRGRhseoFo7CRV1YgeFpuatyAPmpuYjNziovyZYJdJnVLxXBP");
       // adds the keyPair you created to keyStore
       await myKeyStore.setKey("testnet", NANOSTORE_CONTRACT_OWNER, keyPair);
 
@@ -431,20 +435,21 @@ export class Nanostore {
         },
         contractName: NANOSTORE_CONTRACT_NAME,
         networkId: "testnet",
-        deps: {keyStore: myKeyStore}, // first create a key store 
+        keyStore: myKeyStore, // first create a key store 
         nodeUrl: "https://rpc.testnet.near.org",
         walletUrl: "https://wallet.testnet.near.org",
         helperUrl: "https://helper.testnet.near.org",
         explorerUrl: "https://explorer.testnet.near.org",
       };
-      const nearConnection = await nearConnect(connectionConfig)
+      const nearConnection = await nearConnect(connectionConfig);
+      const activeWallet = new WalletAccount(nearConnection, 'Nanostore');
+
+      console.log('nearConnection', nearConnection)
 
       const account = await nearConnection.account(NANOSTORE_CONTRACT_OWNER);
-      const balance = await account.getAccountBalance();
 
       console.log(' ==== account: ', account);
-      console.log(' ==== balance: ', balance);
-
+   
       const contract = new Contract(
         account,
         NANOSTORE_CONTRACT_NAME,
@@ -456,7 +461,7 @@ export class Nanostore {
 
       try {
         // @ts-ignore: method does not exist on Contract type
-        const printing  = await contract.nft_batch_print({
+        const printing  = await contract.nft_print({
           meta: null,
           callbackUrl: '',
           args: {
@@ -737,6 +742,17 @@ export class Nanostore {
   }
 
   /**
+   * @description
+   * ----------------------------------------------
+   * @returns 
+   */
+  public async getMyTokens() {
+    const account = this.activeWallet?.account()
+    const accountId = account?.accountId
+    return await this.nanostoreGraphql.getTokensFromOwner(accountId)
+  }
+
+  /**
    * TODO: check retryFetch logic
    * TODO: type token returned
    * @description Returns all the tokens minted with nanostore contract
@@ -746,12 +762,14 @@ export class Nanostore {
    * @throws {CannotGetTokenError}
    */
     public async getAllTokensFromNanostore( 
-        offset: number, 
-		    limit: number
+        offset: number = 0, 
+		    limit: number = 10
     ): Promise<any>
     {
       console.log('Entro')
-      const { data, error } = await fetchGraphQl({
+
+    
+      const {data , error} = await fetchGraphQl({
         query: QUERIES.storeNftsQuery,
         variables: {
           condition: {
@@ -762,8 +780,8 @@ export class Nanostore {
         },
         network: 'testnet'
       });
-
-      console.log('data ********** : ', data)
+      
+      console.log('data fetchGraphQl ********** : ', data.mb_views_nft_metadata_unburned);
 
       return await this.mintbaseGraphql?.getTokensFromContract(0,10, NANOSTORE_CONTRACT_NAME);
     }
@@ -826,5 +844,9 @@ export class Nanostore {
           throw CannotTransferTokenError.becauseTransactionFails();
       }
   }
+
+    public async doPrinting() {
+      
+    }
   
 }

@@ -1,10 +1,11 @@
 import { request, gql } from 'graphql-request'
 import { from, Observable, tap } from 'rxjs';
 import urlcat from 'urlcat';
-import { storeGeneralQuery, thingGeneralQuery, tokensGeneralQuery } from '../utils/graphQuery';
+import { storeGeneralQuery, thingGeneralQuery, tokensByOwnerQuery, tokensGeneralQuery } from '../utils/graphQuery';
 // Hay que probar de limpiar esta dependencia
 import { GetStoreByOwner, GetTokensOfStoreId } from '../graphql_types';
 import { MintbaseThing } from './../types';
+import { GRAPHQL_ENDPOINTS } from '@mintbase-js/sdk';
 
 export class MintbaseGraphql {
 
@@ -12,7 +13,7 @@ export class MintbaseGraphql {
 
 
   constructor(apiBaseUrl: string) {
-    this.apiBaseUrl = apiBaseUrl;
+    this.apiBaseUrl = GRAPHQL_ENDPOINTS['testnet'];
   }
 
   /**
@@ -33,24 +34,6 @@ export class MintbaseGraphql {
     );
   }
 
-  /**
-   * implementación en graphql de ex-ts-lib
-   * @param thingId 
-   * @param itemOffset 
-   * @param itemLimit 
-   * @returns 
-   */
-  public getThingStream(
-    thingId: string, 
-    itemOffset: number = 0, 
-    itemLimit: number = 1000
-  ): Observable<any>
-  {
-    return from(this.getThingById(thingId)).pipe(
-      tap(ev => console.log('getThingStream method: ', ev))
-    );
-  }
-
     /**
    * Makes custom GraphQL query
    * @param query custom GraphQL query
@@ -61,10 +44,9 @@ export class MintbaseGraphql {
     query: string,
     variables?: unknown
   ): Promise<T> {
-    const url = urlcat(this.apiBaseUrl, '/v1/graphql')
 
     try {
-      const data = await request(url, query, variables)
+      const data = await request(this.apiBaseUrl, query, variables)
       return data;
     } catch (error: any) {
       throw new Error(error.message)
@@ -121,69 +103,6 @@ export class MintbaseGraphql {
     else throw new Error('My store cannot be accessed.')
   }
 
-  /**
-   * implementación en graphql de ex-ts-lib
-   * @link thingGeneralQuery
-   */
-   public async getThingById(thingId: string|undefined) {
-    if(!thingId) throw new Error('Store Id not provided.');
-    console.log('thingId: ', thingId)
-    const query = gql`
-    {
-      thing(where: {id: {_eq: "${thingId}"}}) {
-        ${thingGeneralQuery}
-      }
-    }
-  `;
-
-    const response = await this.custom( query ) as any;
-    console.log('getThingById response: ', response)
-    if(response) return response?.thing[0];
-    else throw new Error('My store cannot be accessed.')
-  }
-
-  /**
-   * implementación en graphql de ex-ts-lib
-   * @param storeId 
-   * @returns 
-   */
-   public async getItemsById(
-    thingIds: string[] | null = null, 
-    showListedOnly: boolean = true,
-    itemOffset: number = 0, 
-    itemLimit: number = 1000
-  ): Promise<MintbaseThing[]> {
-
-      const query = gql`
-        {
-          thing(
-            where: {
-              id: {
-                _in: "${thingIds}"
-              },
-              tokens: {
-                list: {
-                  removedAt: {
-                    _is_null: ${showListedOnly}
-                  }
-                }
-              }
-            }, 
-            limit: ${itemLimit}, 
-            offset: ${itemOffset}
-          )
-          {
-            ${thingGeneralQuery}
-          }
-        }
-      `;
-      const response = await this.custom(
-          query
-        ) as any;
-
-      if(response) return response.thing;
-      else throw new Error('My store cannot be accessed.')
-    }
 
   /**
    * implementación en graphql de ex-ts-lib
@@ -303,34 +222,17 @@ export class MintbaseGraphql {
 
   /**
    * @description
-   * --------------------------------------------------------
-   * @param storeId 
-   * @returns 
-   */
-  public async getThingsByOwner(ownerId?: string): Promise<MintbaseThing[]> {
-    const query = gql`
-    {
-      thing(where: {tokens: {ownerId: {_eq: "${ownerId}"}}}) {
-        ${thingGeneralQuery}
-      }
-    }
-  `;
-  const response = await this.custom(
-    query
-  ) as any;
-
-  if(response) return response.thing;
-  else throw new Error('My store cannot be accessed.')
-}
-
-  /**
-   * 
+   * ---------------------------------------------------------------
    * @param storeId 
    * @returns 
    * @throws Custom Error if cannot get data
    */
-  public async getTokensFromContract(offset: number, limit: number, contractName: string): Promise<any[]> {
-    
+  public async getTokensFromContract(
+    offset: number,
+    limit: number,
+    contractName: string
+  ): Promise<any[]> {
+    console.log('Atacamos a ', this.apiBaseUrl)
     const query = gql`{
       mb_views_nft_tokens(
         where: {nft_contract_id: {_eq: "${contractName}"}}
@@ -342,12 +244,51 @@ export class MintbaseGraphql {
     }
   `;
 
-  const response = await this.custom(
-    query
-  ) as any;
+    const response = await this.custom(
+      query
+    ) as any;
 
-  if(response && response.mb_views_nft_tokens) return response.mb_views_nft_tokens;
-  else throw new Error('My store cannot be accessed.')
+    if(response && response.mb_views_nft_tokens) return response.mb_views_nft_tokens;
+    else throw new Error('My store cannot be accessed.')
 
-}
+  }
+
+
+  /**
+   * @description
+   * ---------------------------------------------------------------
+   * @param storeId 
+   * @returns 
+   * @throws Custom Error if cannot get data
+   */
+  public async getTokensFromContractAndOwner(
+    offset: number,
+    limit: number, 
+    contractName: string,
+    ownerId: string
+  ): Promise<any[]> {
+    
+    const query = gql`{
+      mb_views_nft_tokens(
+        where: {
+          nft_contract_id: {_eq: "${contractName}"},
+          owner: {_eq: "${ownerId}"}
+        }
+        offset: ${offset}
+        limit: ${limit}
+      ) {
+        ${tokensByOwnerQuery}
+      }
+    }
+  `;
+
+    const response = await this.custom(
+      query
+    ) as any;
+
+    if(response && response.mb_views_nft_tokens) return response.mb_views_nft_tokens;
+    // @TODO custom graphql errors
+    else throw new Error('My store cannot be accessed.')
+
+  }
 }

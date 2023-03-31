@@ -4,15 +4,27 @@ export const NANOSTORE_CONTRACT_NAME = 'storepruebas1.nanostore.testnet'; // 'na
 
 export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
 // Only for develop purposes
-export const NANOSTORE_PRIVATE_KEY = 'ed25519:2rm3GT6J15JmNZNhaD8zxiqsf7Pdb1P6wCJiFntZRGRhseoFo7CRV1YgeFpuatyAPmpuYjNziovyZYJdJnVLxXBP';
+export const NANOSTORE_PRIVATE_KEY = 'ed25519:2RXaSjUUKduXEe7omGqdxZd19qgjA7dg1nXn7AN74321RKVW7a2EPCaeKrucEKknLgryRSoynM37UBmwGLqcmbN8';
 
-export const TESTNET_CONFIG = {
+export const NANOSTORE_TESTNET_CONFIG = {
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
   contractName: NANOSTORE_CONTRACT_NAME,
   walletUrl: "https://wallet.testnet.near.org",
   helperUrl: "https://helper.testnet.near.org",
   explorerUrl: "https://explorer.testnet.near.org",
+  headers: {
+    "Content-Type": "application/json",
+  },
+};
+
+export const NANOSTORE_MAINNET_CONFIG = {
+  networkId: "mainnet",
+  nodeUrl: "https://rpc.mainnet.near.org",
+  contractName: NANOSTORE_CONTRACT_NAME,
+  walletUrl: "https://wallet.mainnet.near.org",
+  helperUrl: "https://helper.mainnet.near.org",
+  explorerUrl: "https://explorer.mainnet.near.org",
   headers: {
     "Content-Type": "application/json",
   },

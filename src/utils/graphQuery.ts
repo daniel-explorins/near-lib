@@ -81,6 +81,25 @@ token_id
 updated_at
 `
 
+export const tokensByOwnerQuery = `
+burned_receipt_id
+burned_timestamp
+copies
+description
+extra
+media
+media_hash
+metadata_id
+reference
+reference_blob
+reference_hash
+title
+token_id
+`
+
+
+
+
 export const thingGeneralQuery = `
 id
 memo
