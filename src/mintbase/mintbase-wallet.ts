@@ -1,6 +1,6 @@
 import { isBrowser } from "browser-or-node";
 import { API, Wallet } from "mintbase";
-import { Chain, Network, OptionalMethodArgs, WalletConfig } from "mintbase/lib/types";
+import { Chain, Network, OptionalMethodArgs } from "mintbase/lib/types";
 import { formatResponse, ResponseData } from "mintbase/lib/utils/responseBuilder";
 import { connect, Contract, keyStores, WalletAccount } from "near-api-js";
 import { firstValueFrom, timer } from "rxjs";
@@ -22,7 +22,6 @@ import { CannotTransferTokenError } from "./../error/cannotTransferTokenError";
 import * as nearUtils from './../utils/near';
 import { Minter } from "mintbase/lib/minter";
 import { MintbaseGraphql } from "./mintbase-graphql";
-import { getGraphQlUri } from "../utils/graphQl";
 import { CannotGetTokenError } from "../error/CannotGetTokenError";
 import { cannotGetMintersError, cannotGetThingsError } from "../error";
 import { GetStoreByOwner, GetTokensOfStoreId } from "../graphql_types";
@@ -64,23 +63,10 @@ export class MintbaseWallet extends Wallet {
     ): Promise<ResponseData<{ wallet: Wallet; isConnected: boolean }>> {
       
       try {
-        // @TODO: do this with nanostore constants ?
-        /*
-        this.constants = await initializeExternalConstants({
-          apiKey: walletConfig.apiKey,
-          networkName: walletConfig.networkName,
-        })
-  
-        this.api = new API({
-          networkName: walletConfig.networkName,
-          chain: Chain.near,
-          constants: this.constants,
-        });
-        */
 
         this.networkName = walletConfig.networkName;
 
-        this.mintbaseGraphql = new MintbaseGraphql(getGraphQlUri(this.networkName));
+        this.mintbaseGraphql = new MintbaseGraphql();
         
         // this lib only supports near
         this.chain = Chain.near;
@@ -120,42 +106,9 @@ export class MintbaseWallet extends Wallet {
 
       } catch (error: any) {
         // @TODO throw custom error
-        console.log('Candemoooor ', error)
         throw error;
       }
     }
-
-    /**
-   * TODO: check retryFetch logic
-   * @description Returns the things that belong to the connected user
-   * ------------------------------------------------------------------------------------
-   * @param {int} intent we intent to get things max 20 times
-   * 
-   * @throws {CannotGetTokenError} code: 503. If mintbase error 
-   * @returns {Promise<MintbaseThing[]>}
-   */
-  public async getWalletThings( 
-    intent = 0
-  ): Promise<any>
-  {
-    intent++;
-    const {data: details} = await this.details();
-    try {
-      return await this.mintbaseGraphql?.getWalletThings(details.accountId);
-      // const response = await this.mintbaseGraphql?.getWalletThings(details.accountId);
-      // console.log('response getWalletThings: *****************', response, );
-      // return response;
-    } catch (error) {
-      if (intent < 20) {
-        // Do a timeout await
-        await firstValueFrom(timer(intent * 5000));
-        return this.getWalletThings(intent)
-      } else if(intent >= 20) {
-        throw CannotGetTokenError.becauseMintbaseError();
-        
-      } 
-    }
-  }
 
   public async getTokensFromCurrentContract( 
     intent = 0
@@ -274,23 +227,6 @@ export class MintbaseWallet extends Wallet {
 		await this.launchOffer(tokenId, price, storeId, options);
 		return true;
 	  }
-
-  /**
-   * @description 
-   * ---------------------------------------------------
-   * @param limit number of results
-   * @param offset number of records to skip
-   * @throws {cannotFetchMarketPlaceError}
-   */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public async fetchMarketplace(
-      offset?: number,
-      limit?: number
-    ) {
-      const response = await this.api?.fetchMarketplace(offset, limit);
-      if (response) return response.data;
-      else throw cannotFetchMarketPlaceError.becauseMintbaseError();
-    }
 
     /**
    * @description

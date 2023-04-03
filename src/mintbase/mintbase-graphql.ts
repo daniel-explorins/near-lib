@@ -12,8 +12,9 @@ export class MintbaseGraphql {
   public apiBaseUrl: string;
 
 
-  constructor(apiBaseUrl: string) {
+  constructor() {
     this.apiBaseUrl = GRAPHQL_ENDPOINTS['testnet'];
+    // console.log('this.apiBaseUrl -------------------------', this.apiBaseUrl)
   }
 
   /**
@@ -105,50 +106,6 @@ export class MintbaseGraphql {
 
 
   /**
-   * implementación en graphql de ex-ts-lib
-   * @param storeId 
-   * @returns 
-   */
-  public async getStoreItems(
-    storeId: string,
-    showListedOnly: boolean = true,
-    itemOffset: number = 0, 
-    itemLimit: number = 1000
-  ): Promise<MintbaseThing[]> {
-      const query = gql`
-        {
-          thing(
-            where: {
-              storeId: {
-                _eq: "${storeId}"
-              }, 
-              tokens: {
-                list: {
-                  removedAt: {
-                    _is_null: ${showListedOnly}
-                  }
-                }
-              },
-            }, 
-            limit: ${itemLimit}, 
-            offset: ${itemOffset}
-          )
-          {
-            ${thingGeneralQuery}
-          }
-        }
-      `;
-      const response = await this.custom(
-          query
-        ) as any;
-
-      console.log('getStoreItems response: ', response);
-      if(response) {
-        return response.thing;
-      } else throw new Error('My store cannot be accessed.')
-    }
-
-  /**
    * @description
    * @param storeId 
    * @returns 
@@ -168,34 +125,6 @@ export class MintbaseGraphql {
   
     if(response && response.nft_tokens) return response.nft_tokens;
     else throw new Error('Tokens cannot be accessed.')
-  }
-
-  /**
-   * 
-   * @param storeId 
-   * @returns 
-   */
-  public async getStoreThings(storeId: string) {
-    const query = gql`
-    {
-      mb_views_store_things(where: {storeId: {_eq: "${storeId}"}}) {
-        createdAt
-        listed
-        media
-        storeId
-        thingId
-        title
-      }
-    }
-  `;
-
-  const response = await this.custom(
-      query
-    ) as any;
-
-    console.log('getStoreThings response: ', response);
-    if(response) return response.mb_views_store_things;
-    else throw new Error('My store cannot be accessed.')
   }
 
   /**
@@ -232,7 +161,6 @@ export class MintbaseGraphql {
     limit: number,
     contractName: string
   ): Promise<any[]> {
-    console.log('Atacamos a ', this.apiBaseUrl)
     const query = gql`{
       mb_views_nft_tokens(
         where: {nft_contract_id: {_eq: "${contractName}"}}

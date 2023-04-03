@@ -93,4 +93,7 @@ export enum MetadataField {
     'transfer_store_ownership',
     'new',
     'batch_change_minters'
-  ]
+  ];
+
+export const NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS = []
+export const NANOSTORE_FACTORY_CONTRACT_CALL_METHODS = ['create_store']

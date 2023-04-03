@@ -11,7 +11,7 @@ export class NanostoreGraphql {
     public apiBaseUrl: string;
   
   
-    constructor(apiBaseUrl: string) {
+    constructor() {
       this.apiBaseUrl = GRAPHQL_ENDPOINTS['testnet'];
     }
 
