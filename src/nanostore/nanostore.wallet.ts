@@ -4,16 +4,13 @@ import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_
 import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
 import { Chain, NearNetwork, NearTransaction, Network, OptionalMethodArgs } from "../types";
-import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_OWNER, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, NANOSTORE_TESTNET_CONFIG } from "./constants";
-import * as nearUtils from './../utils/near';
+import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, NANOSTORE_TESTNET_CONFIG } from "./constants";
+import * as nearUtils from '../utils/near';
 import { TEST_METADATA } from "./test.data";
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
 import BN from "bn.js";
 import { getStoreNameFromAccount } from "../utils/nanostore";
-import { JsonToUint8Array } from "./../utils/near";
-import * as nearAPI from "near-api-js";
-
-import { QUERIES, fetchGraphQl, QUERY_OPS_PREFIX } from '@mintbase-js/data'
+import { JsonToUint8Array } from "../utils/near";
 import { initializeExternalConstants } from "../utils/external-constants";
 import { Minter } from "mintbase/lib/minter";
 import { KeyStore } from "near-api-js/lib/key_stores";
@@ -23,6 +20,7 @@ import { Action, createTransaction, functionCall } from "near-api-js/lib/transac
 import { base_decode } from "near-api-js/lib/utils/serialize";
 import { PublicKey } from "near-api-js/lib/utils";
 import { NanostoreGraphql } from "./graphql";
+import { NanostoreBackend } from "./nanostore.backend";
 
 const elliptic = require("elliptic").ec;
 /** 
@@ -50,6 +48,8 @@ export class Nanostore {
   private minter?: Minter;
   private api: any;
 
+  public nanostoreBackend;
+
   public activeAccount?: Account;
 
   // Public acces to graphQl queries
@@ -68,6 +68,9 @@ export class Nanostore {
     private apiKey: string,
     public networkName: NearNetwork = NearNetwork.testnet
   ) {
+
+    this.nanostoreBackend = new NanostoreBackend();
+
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
     switch (networkName) {

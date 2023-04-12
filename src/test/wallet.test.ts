@@ -17,7 +17,7 @@ describe('api', () => {
       const thingId = 'id'
       graphqlNearMock.get(`/things/${thingId}`).reply(200, thingByIdMock)
   
-      const result = await Graphql.getItemsById();
+      // const result = await Graphql.getItemsById();
   
       expect(result).toStrictEqual(thingByIdMock);
     })
