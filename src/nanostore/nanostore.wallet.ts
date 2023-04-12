@@ -1,26 +1,24 @@
 import { Account, connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletAccount, WalletConnection } from "near-api-js";
 import { BehaviorSubject, shareReplay } from "rxjs";
-import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_NAME, ONE_YOCTO, TWENTY_FOUR } from "../constants";
-import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError, CannotTransferTokenError } from "../error";
+import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_NAME, ONE_YOCTO } from "../constants";
+import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
-import { Chain, NearNetwork, NearTransaction, Network, OptionalMethodArgs } from "../types";
-import { MetadataField, NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, NANOSTORE_TESTNET_CONFIG } from "./constants";
+import { NearNetwork, NearTransaction, Network, OptionalMethodArgs } from "../types";
+import { NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import * as nearUtils from '../utils/near';
-import { TEST_METADATA } from "./test.data";
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
 import BN from "bn.js";
 import { getStoreNameFromAccount } from "../utils/nanostore";
 import { JsonToUint8Array } from "../utils/near";
 import { initializeExternalConstants } from "../utils/external-constants";
-import { Minter } from "mintbase/lib/minter";
 import { KeyStore } from "near-api-js/lib/key_stores";
-import { MintbaseGraphql } from "../mintbase/mintbase-graphql";
-import { API } from "mintbase";
+import { uploadReference } from '@mintbase-js/storage';
 import { Action, createTransaction, functionCall } from "near-api-js/lib/transaction";
 import { base_decode } from "near-api-js/lib/utils/serialize";
 import { PublicKey } from "near-api-js/lib/utils";
 import { NanostoreGraphql } from "./graphql";
 import { NanostoreBackend } from "./nanostore.backend";
+import { ReferenceObject } from "./interfaces";
 
 const elliptic = require("elliptic").ec;
 /** 
@@ -45,8 +43,6 @@ export class Nanostore {
   private activeNearConnection?: Near;
   private constants?: any;
   private keyStore?: KeyStore;
-  private minter?: Minter;
-  private api: any;
 
   public nanostoreBackend;
 
@@ -54,7 +50,7 @@ export class Nanostore {
 
   // Public acces to graphQl queries
   public mintbaseGraphql: any;
-  public nanostoreGraphql: any;
+  public nanostoreGraphql: NanostoreGraphql;
 
   /**
    * @MF TODO: Move initialization from constructor to static public method ?
@@ -70,7 +66,7 @@ export class Nanostore {
   ) {
 
     this.nanostoreBackend = new NanostoreBackend();
-
+    this.nanostoreGraphql = new NanostoreGraphql();
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
     switch (networkName) {
@@ -86,8 +82,15 @@ export class Nanostore {
 
   }
 
+  /**
+   * @description
+   * @returns 
+   */
   public isConnected(): boolean {
-    return this.activeWallet?.isSignedIn() ?? false
+
+    if(!this.activeWallet) return false;
+    return this.activeWallet.isSignedIn() ?? false
+
   }
 
   /**
@@ -107,7 +110,7 @@ export class Nanostore {
     if(!this.activeWallet) return;
     
     try {
-      
+      // https://docs.near.org/tools/near-api-js/wallet
       this.activeWallet.requestSignIn({
         contractId: NANOSTORE_CONTRACT_NAME,
         successUrl: '',
@@ -131,21 +134,6 @@ export class Nanostore {
       apiKey: this.apiKey,
       networkName: this.networkName,
     })
-
-    this.api = new API({
-      networkName: Network.testnet,
-      chain: Chain.near,
-      constants: this.constants,
-    })
-
-    // Use new lib
-    this.minter = new Minter({
-      apiKey: this.apiKey,
-      constants: this.constants,
-    })
-
-    this.mintbaseGraphql = new MintbaseGraphql();
-    this.nanostoreGraphql = new NanostoreGraphql();
 
     const keyStore = new keyStores.BrowserLocalStorageKeyStore();
     this.keyStore = keyStore;
@@ -180,7 +168,10 @@ export class Nanostore {
     }
   }
   
-
+  /**
+   * @description
+   * ------------------------------------------------------------------------------------
+   */
   public async buyToken() {
 
     const account = this.activeWallet?.account()
@@ -220,6 +211,7 @@ export class Nanostore {
 
   /**
    * @TODO Revisar a fondo
+   * ------------------------------------------------------------------------------------
    * @param tokenId 
    * @param price 
    */
@@ -419,7 +411,7 @@ export class Nanostore {
 
   /**
    * @description Creates a store. For future developments.
-   * ------------------------------------------
+   * ------------------------------------------------------------------------------------
    * @param storeId Store name
    * @param symbol Store symbol
    */
@@ -472,34 +464,39 @@ export class Nanostore {
     return true;
   }
 
-  
-
     /**
      * @description Mint an nft that could be 3d printed
      * ------------------------------------------------------------------------------------
      * @param {ConnectedWalletAccount} account
      * @throws {CannotMint3DToken} code: 1013 - If contract call or creation throws eror
      */
-    public async printableNftMint(file: File, numToMint: number): Promise<void> {
-        
-        if(!this.minter || !this.activeWallet) throw new Error('No minter defined');
+    public async mint(
+      file: File, 
+      numToMint: number
+    ): Promise<void> {
 
-        const metadata = TEST_METADATA;
-        const { data, error: fileError } = await this.minter.uploadField(MetadataField.Media, file);
-        // this.mintbaseWallet.minter.setField(MetadataField.Tags, ["tag prueba 1", "tag prueba 2", "3D print hola ?"]);
-        // this.mintbaseWallet.minter.setField(MetadataField.Extra, [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]);
-        this.minter.setMetadata(metadata, false);
+      if(!this.activeWallet) throw new Error('No activeWallet defined');
 
-        const { data: metadataId, error } = await this.minter.getMetadataId();
+      const referenceObject: ReferenceObject = {
+        title: 'proves 1',
+        description: 'proves 2',
+        //for the media to be uploaded to arweave it must be contained in one of these 3 fields
+        media: file,
+        category: 'proves 3',
+        tags: [{tag1 : "tag prueba 1"}],
+        // Esto se guardará en el backend
+        extra: [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]
+      }
+      
+      const response = await uploadReference(referenceObject);
 
-        const meta = JSON.stringify({
-            type: 'mint',
-            args: {
-                contractAddress: NANOSTORE_CONTRACT_NAME,
-                amount: numToMint,
-                thingId: `${metadataId}:${NANOSTORE_CONTRACT_NAME}`,
-            }
-        });
+      const meta = JSON.stringify({
+          type: 'mint',
+          args: {
+              contractAddress: NANOSTORE_CONTRACT_NAME,
+              amount: numToMint
+          }
+      });
 
         // Ejecutamos el contrato con la cuenta logeada (app user)
         const account = this.activeWallet.account();
@@ -527,8 +524,8 @@ export class Nanostore {
             args: {
                 owner_id: account.accountId,
                 metadata: {
-                    reference: metadataId,
-                    extra: 'Nanostore'
+                    reference: response.id,
+                    extra: 'Nanostore testnet'
                 },
                 // @TODO: Que hacemos con esto ?
                 royalty_args: null,
@@ -580,22 +577,26 @@ export class Nanostore {
 
   /**
    * @description
-   * ----------------------------------------------
+   * ------------------------------------------------------------------------------------
    * @returns 
    */
   public async getMyTokens() {
-    const account = this.activeWallet?.account()
-    const accountId = account?.accountId
-    return await this.nanostoreGraphql.getTokensFromOwner(accountId)
+
+    const account = this.activeWallet?.account();
+    if(!account) throw new Error('No account defined');
+    const accountId = account.accountId;
+
+    return await this.nanostoreGraphql.getTokensFromOwner(accountId);
+
   }
 
   /**
    * TODO: check retryFetch logic
    * TODO: type token returned
    * @description Returns all the tokens minted with nanostore contract
+   * ------------------------------------------------------------------------------------
    * @param offset
    * @param limit
-   * ------------------------------------------------------------------------------------
    * @throws {CannotGetTokenError}
    */
     public async getAllTokensFromNanostore( 
@@ -603,6 +604,7 @@ export class Nanostore {
 		    limit: number = 10
     ): Promise<any>
     {
+      if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
       /* New mintbase lib example
 
       const {data , error} = await fetchGraphQl({
@@ -618,7 +620,7 @@ export class Nanostore {
       });
       */
       try {
-        return await this.mintbaseGraphql?.getTokensFromContract(offset,limit, NANOSTORE_CONTRACT_NAME);
+        return await this.nanostoreGraphql.getAllTokens(offset,limit);
       } catch ($e) {
         throw new Error('Graphql error.');
       }
@@ -627,11 +629,11 @@ export class Nanostore {
 
     /**
      * @description
-     * -------------------------------------
+     * ------------------------------------------------------------------------------------
      */
     public getGraphQlObject() {
-      if(!this.mintbaseGraphql) throw  new Error('Graphql is not defined')
-      return this.mintbaseGraphql;
+      if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
+      return this.nanostoreGraphql;
     }
 
   /**
