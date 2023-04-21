@@ -1,12 +1,12 @@
 import { MintMetadata } from "mintbase";
 
-export const NANOSTORE_CONTRACT_NAME = 'storepruebas1.nanostore.testnet'; // 'nanostore_store.dev-1675363616907-84002391197707'
+export const NANOSTORE_CONTRACT_NAME = 'storepruebas2.nanostore.testnet'; // 'nanostore_store.dev-1675363616907-84002391197707'
 
 export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
 // Only for develop purposes
 export const NANOSTORE_PRIVATE_KEY = 'ed25519:2RXaSjUUKduXEe7omGqdxZd19qgjA7dg1nXn7AN74321RKVW7a2EPCaeKrucEKknLgryRSoynM37UBmwGLqcmbN8';
 
-export const NANOSTORE_BACKEND_URL = 'https://b3d7-54-73-118-61.eu.ngrok.io';
+export const NANOSTORE_BACKEND_URL = 'http://localhost:3005';
 
 export const NANOSTORE_TESTNET_CONFIG = {
   networkId: "testnet",

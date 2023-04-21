@@ -15,10 +15,10 @@ import { KeyStore } from "near-api-js/lib/key_stores";
 import { uploadReference } from '@mintbase-js/storage';
 import { Action, createTransaction, functionCall } from "near-api-js/lib/transaction";
 import { base_decode } from "near-api-js/lib/utils/serialize";
-import { PublicKey } from "near-api-js/lib/utils";
+import { PublicKey } from "near-api-js/lib/utils"; 
 import { NanostoreGraphql } from "./graphql";
 import { NanostoreBackend } from "./nanostore.backend";
-import { ReferenceObject } from "./interfaces";
+import { ReferenceObject } from "./interfaces"; 
 
 const elliptic = require("elliptic").ec;
 /** 
@@ -370,6 +370,25 @@ export class Nanostore {
     )
   }
 
+  public async callToPrint(
+    tokenId: string,
+    reference: string,
+    fee: string
+  ) {
+    try {
+      await this.nanostoreBackend.print(tokenId, reference);
+    } catch (error) {
+      console.log('ha fallado el print: ', error);
+    }
+    
+  }
+
+  /**
+   * @description call nft_deposit_print on contract
+   * --------------------------------------------------------------
+   * @param token_id 
+   * @param printing_fee 
+   */
   public async depositToPrint(
     token_id: number, 
     printing_fee: number
@@ -390,7 +409,13 @@ export class Nanostore {
     )
 
     const amount = utils.format.parseNearAmount(printing_fee.toString())
-
+    
+    // TODO este metodo deberá llamarse despues del pago por wallet
+    await this.nanostoreBackend.registerDepositToPrint(
+      token_id.toString(),
+      printing_fee.toString(),
+      accountId
+    )
     try {
       // @ts-ignore: method does not exist on Contract type
       await contract.nft_deposit_print({
@@ -464,19 +489,66 @@ export class Nanostore {
     return true;
   }
 
+  /**
+   * @description
+   * ---------------------------------------------------
+   * @param imageFile 
+   * @param stlFile 
+   * @param numToMint 
+   */
+  public async mint(
+    imageFile: File,
+    stlFile: File,
+    numToMint: number,
+    fileName: string
+  ) {
+
+    if(!this.activeWallet) throw new Error('No wallet');
+    if(!this.isConnected()) throw new Error('Not logged'); 
+
+    let responseUpload;
+
+    const referenceObject: ReferenceObject = {
+      title: 'proves 1 backend',
+      description: 'proves 2 backend',
+      //for the media to be uploaded to arweave it must be contained in one of these 3 fields
+      media: imageFile,
+      category: 'proves 3 backend',
+      tags: [{tag1 : "tag prueba 1 backend"}],
+      // Esto se guardará en el backend
+      extra: [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]
+    }
+
+    try {
+      responseUpload = await uploadReference(referenceObject);
+    } catch (error) {
+      throw new Error('Mint storage error');
+    }
+
+    try {
+      const reference = responseUpload.id;
+      const accountId = this.activeWallet.account().accountId
+      await this.nanostoreBackend.mint(stlFile, numToMint, accountId, reference, fileName);
+    } catch (error) {
+      throw new Error('Mint Backend error');
+    }
+  }
+
     /**
      * @description Mint an nft that could be 3d printed
+     * Legacy method
      * ------------------------------------------------------------------------------------
      * @param {ConnectedWalletAccount} account
      * @throws {CannotMint3DToken} code: 1013 - If contract call or creation throws eror
      */
-    public async mint(
+    public async mintByLoggedUser(
       file: File, 
+      printerFile: File,
       numToMint: number
     ): Promise<void> {
 
       if(!this.activeWallet) throw new Error('No activeWallet defined');
-
+      
       const referenceObject: ReferenceObject = {
         title: 'proves 1',
         description: 'proves 2',
@@ -518,7 +590,7 @@ export class Nanostore {
 
         try {
             // @ts-ignore: method does not exist on Contract type
-            await contract.nft_batch_mint({
+            const mintResponse = await contract.nft_batch_mint({
             meta,
             callbackUrl: "",
             args: {
@@ -534,6 +606,10 @@ export class Nanostore {
             gas: MAX_GAS,
             amount: ONE_YOCTO,
             });
+
+            
+            this.nanostoreBackend.payPrintedToken(file, 'loco', 'aww');
+
         } catch (error) {
             throw CannotMint3DToken.becauseContractError();
         }
