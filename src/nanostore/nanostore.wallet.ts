@@ -4,7 +4,7 @@ import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_
 import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError } from "../error";
 import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
 import { NearNetwork, NearTransaction, Network, OptionalMethodArgs } from "../types";
-import { NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_PRIVATE_KEY, NANOSTORE_TESTNET_CONFIG } from "./constants";
+import { NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import * as nearUtils from '../utils/near';
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
 import BN from "bn.js";
@@ -107,9 +107,13 @@ export class Nanostore {
       return;
     }
 
-    if(!this.activeWallet) return;
+    if(!this.activeWallet) {
+      console.log('no active wallet');
+      return;
+    }
     
     try {
+      console.log('loggin !! .......');
       // https://docs.near.org/tools/near-api-js/wallet
       this.activeWallet.requestSignIn({
         contractId: NANOSTORE_CONTRACT_NAME,
@@ -193,12 +197,12 @@ export class Nanostore {
     )
     try {
 
-      const amount = utils.format.parseNearAmount('14')
+      const amount = utils.format.parseNearAmount('1')
         // @ts-ignore: method does not exist on Contract type
         await contract.buy({
             args: {
               nft_contract_id: NANOSTORE_CONTRACT_NAME, //  'nanostore_store.dev-1675363616907-84002391197707',
-              token_id: '7'
+              token_id: '1'
             },
             gas,
             amount: amount, // attached deposit in yoctoNEAR
@@ -241,11 +245,21 @@ export class Nanostore {
     const listCost = nearUtils.calculateListCost(1);
     const deposit = utils.format.parseNearAmount(listCost.toString()) ?? '0';
     const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
-    const publicKey = this.activeNearConnection?.config.keyPair.getPublic().encode("hex");
+    let publicKeys;
 
-    // const ec = new elliptic("secp256k1");
-    // Generate a new key pair
-    // const keyPair = ec.genKeyPair();
+    const keys = await this.activeAccount?.getAccessKeys();
+    if(keys !== undefined) {
+      publicKeys = keys.find(key => key.public_key)?.public_key;
+      
+    } else {
+      const ec = new elliptic("secp256k1");
+      const keyPair = ec.genKeyPair();
+      publicKeys = keyPair.getPublic().encode("hex");
+    }
+  
+    
+
+    // const publicKey = this.activeNearConnection?.config.keyPair.getPublic().encode("hex");
 
     const transactions: NearTransaction[] = [
       {
@@ -259,7 +273,7 @@ export class Nanostore {
         ],
         signerId: "",
         receiverId: MINTBASE_MARKETPLACE_TESTNET,
-        publicKey: publicKey,
+        publicKey: publicKeys,
         actions: [],
         nonce: 0,
         blockHash: args_base64,
@@ -276,7 +290,7 @@ export class Nanostore {
         ],
         signerId: "",
         receiverId: NANOSTORE_CONTRACT_NAME,
-        publicKey: publicKey,
+        publicKey: publicKeys,
         actions: [],
         nonce: 0,
         blockHash: args_base64,
@@ -371,12 +385,10 @@ export class Nanostore {
   }
 
   public async callToPrint(
-    tokenId: string,
-    reference: string,
-    fee: string
+    tokenId: string
   ) {
     try {
-      await this.nanostoreBackend.print(tokenId, reference);
+      await this.nanostoreBackend.print(tokenId);
     } catch (error) {
       console.log('ha fallado el print: ', error);
     }
@@ -391,7 +403,8 @@ export class Nanostore {
    */
   public async depositToPrint(
     token_id: number, 
-    printing_fee: number
+    printing_fee: number,
+    print_store: string
   ) {
     const account = this.activeWallet?.account()
     const accountId = this.activeWallet?.account().accountId
@@ -408,26 +421,30 @@ export class Nanostore {
       }
     )
 
-    const amount = utils.format.parseNearAmount(printing_fee.toString())
+    const amount = utils.format.parseNearAmount(printing_fee.toString());
+
+    console.log('amount: ', amount)
     
     // TODO este metodo deberá llamarse despues del pago por wallet
+    // Creamos el print-event en el backend
     await this.nanostoreBackend.registerDepositToPrint(
       token_id.toString(),
       printing_fee.toString(),
       accountId
     )
     try {
+      // TODO: Revisar en el contrato la realización del pago
       // @ts-ignore: method does not exist on Contract type
       await contract.nft_deposit_print({
         meta: null,
         callbackUrl: "",
             args: {
                 token_id,
-                printing_fee: 1,
-                print_store: 'printernanostore.testnet'
+                printing_fee: amount,
+                print_store
             },
             gas: MAX_GAS,
-            amount: 1,
+            amount: ONE_YOCTO,
       });
     } catch (error) {
       console.log(' ERROR in deposit print *** : ', error);
@@ -509,14 +526,14 @@ export class Nanostore {
     let responseUpload;
 
     const referenceObject: ReferenceObject = {
-      title: 'proves 1 backend',
-      description: 'proves 2 backend',
+      title: 'pruebas nanostore title',
+      description: 'pruebas nanostore description',
       //for the media to be uploaded to arweave it must be contained in one of these 3 fields
       media: imageFile,
-      category: 'proves 3 backend',
-      tags: [{tag1 : "tag prueba 1 backend"}],
+      category: 'proves nanostore',
+      tags: [{tag1 : "tag prueba nanostore"}],
       // Esto se guardará en el backend
-      extra: [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]
+      extra: [] // {trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}
     }
 
     try {

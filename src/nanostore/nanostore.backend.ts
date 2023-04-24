@@ -58,10 +58,9 @@ export class NanostoreBackend {
   }
 
   public async print(
-    tokenId: string,
-    reference: string
+    tokenId: string
   ) {
-    const body = {tokenId, reference}
+    const body = {tokenId, reference: 'fake'}
     return new Promise((resolve, reject) => {
 		  anonApiCall.post("/print-event", body)
 			.then(({ data, status }) => {
@@ -76,6 +75,7 @@ export class NanostoreBackend {
     fee: string,
     owner: string
   ) {
+    // TODO: el printer está hardcoded
     const body = {tokenId, printerId: 'printernanostore.testnet', fee, owner}
     return new Promise((resolve, reject) => {
 		  anonApiCall.post("/print-event/deposit", body)
