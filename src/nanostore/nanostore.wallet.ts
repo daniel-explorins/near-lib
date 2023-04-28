@@ -176,7 +176,7 @@ export class Nanostore {
    * @description
    * ------------------------------------------------------------------------------------
    */
-  public async buyToken() {
+  public async buyToken(token_id: string) {
 
     const account = this.activeWallet?.account()
     const accountId = this.activeWallet?.account().accountId
@@ -202,7 +202,7 @@ export class Nanostore {
         await contract.buy({
             args: {
               nft_contract_id: NANOSTORE_CONTRACT_NAME, //  'nanostore_store.dev-1675363616907-84002391197707',
-              token_id: '1'
+              token_id
             },
             gas,
             amount: amount, // attached deposit in yoctoNEAR
@@ -404,51 +404,39 @@ export class Nanostore {
   public async depositToPrint(
     token_id: number, 
     printing_fee: number,
-    print_store: string
+    printerId: string
   ) {
     const account = this.activeWallet?.account()
     const accountId = this.activeWallet?.account().accountId
 
 	if (!account || !accountId) throw new Error('Undefined account');
-	// console.log('saccount: ', account);
 
-    const contract = new Contract(
-      account,
-      NANOSTORE_CONTRACT_NAME,
-      {
-          viewMethods: NANOSTORE_CONTRACT_VIEW_METHODS,
-          changeMethods: NANOSTORE_CONTRACT_CALL_METHODS
-      }
-    )
+  await this.nanostoreBackend.registerDepositToPrint(
+    token_id.toString(),
+    printing_fee.toString(),
+    accountId,
+    printerId
+  )
 
-    const amount = utils.format.parseNearAmount(printing_fee.toString());
+  const amount = utils.format.parseNearAmount(printing_fee.toString());
 
-    console.log('amount: ', amount)
-    
-    // TODO este metodo deberá llamarse despues del pago por wallet
+  if(!amount) return;
+
+  const amount_bn = new BN(amount);
+
+  // @TODO Falta verificacion en frontend (Esto será en otro metodo despues del sendmoney)
+  await this.nanostoreBackend.registerDepositPayedToPrint(token_id.toString());
+
+  // Esto será un paso posterior
+  this.callToPrint(token_id.toString());
+
+  const transfer = await account.sendMoney(
+    NANOSTORE_CONTRACT_NAME,
+    amount_bn
+  );
+
+  // Falta registrar el payment-done
     // Creamos el print-event en el backend
-    await this.nanostoreBackend.registerDepositToPrint(
-      token_id.toString(),
-      printing_fee.toString(),
-      accountId
-    )
-    try {
-      // TODO: Revisar en el contrato la realización del pago
-      // @ts-ignore: method does not exist on Contract type
-      await contract.nft_deposit_print({
-        meta: null,
-        callbackUrl: "",
-            args: {
-                token_id,
-                printing_fee: amount,
-                print_store
-            },
-            gas: MAX_GAS,
-            amount: ONE_YOCTO,
-      });
-    } catch (error) {
-      console.log(' ERROR in deposit print *** : ', error);
-    } 
   }
 
   /**
