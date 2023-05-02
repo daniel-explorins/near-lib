@@ -73,12 +73,27 @@ export class NanostoreBackend {
   public async registerDepositToPrint(
     tokenId: string,
     fee: string,
-    owner: string
+    owner: string,
+    printerId: string
   ) {
     // TODO: el printer está hardcoded
-    const body = {tokenId, printerId: 'printernanostore.testnet', fee, owner}
+    const body = {tokenId, printerId, fee, owner}
     return new Promise((resolve, reject) => {
 		  anonApiCall.post("/print-event/deposit", body)
+			.then(({ data, status }) => {
+				resolve(data);
+			})
+			.catch((error) => { reject(error) })
+	});
+  }
+
+  public async registerDepositPayedToPrint(
+    tokenId: string
+  ) {
+    // TODO: el printer está hardcoded
+    const body = {tokenId}
+    return new Promise((resolve, reject) => {
+		  anonApiCall.post("/print-event/deposit-payed", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})
