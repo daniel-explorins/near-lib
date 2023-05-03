@@ -1,6 +1,7 @@
 import { GRAPHQL_ENDPOINTS } from "@mintbase-js/sdk";
 import request, { gql } from "graphql-request";
-import urlcat from "urlcat";
+import { CannotConnectError } from "./../error";
+import { NearNetwork } from "./../types";
 
 import { tokensByOwnerQuery, tokensGeneralQuery } from "../utils/graphQuery";
 import { NANOSTORE_CONTRACT_NAME } from "./constants";
@@ -10,9 +11,27 @@ export class NanostoreGraphql {
 
     public apiBaseUrl: string;
   
+      /**
+   * @description The constructor only sets one variables: networkName
+   * ------------------------------------------------------------------------------------
+   * @param {NearNetwork} networkName 
+   * @throws {CannotConnectError} if network is unrecognized
+   */
   
-    constructor() {
-      this.apiBaseUrl = GRAPHQL_ENDPOINTS['testnet'];
+    constructor(
+      private networkName: NearNetwork,
+    ) {
+      switch (networkName) {
+        case NearNetwork.mainnet:
+            
+          break;
+        case NearNetwork.testnet:
+            
+          break;
+        default:
+          throw CannotConnectError.becauseUnsupportedNetwork();
+      }
+      this.apiBaseUrl = GRAPHQL_ENDPOINTS[networkName];
     }
 
     /**

@@ -1,5 +1,6 @@
-import { Constants, MintMetadata, Royalties, Token } from 'mintbase';
+import { Constants, Royalties, Token } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
+import { ConnectedWalletAccount } from "near-api-js";
 
 /** Lib only works with near */
 export enum Chain {
@@ -145,6 +146,7 @@ export interface MintbaseNftMetadata {
 }
 
 export {
+  ConnectedWalletAccount,
   MintbaseConstants,
   NearWalletDetails,
   NearToken,

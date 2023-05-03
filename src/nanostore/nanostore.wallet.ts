@@ -1,44 +1,33 @@
-import { Account, connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletConnection } from "near-api-js";
-import { BehaviorSubject, shareReplay } from "rxjs";
-import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_NAME, ONE_YOCTO } from "../constants";
-import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError } from "../error";
-import { MARKETPLACE_HOST_NEAR_ACCOUNT, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
-import { NearNetwork, NearTransaction, OptionalMethodArgs } from "../types";
-import { NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_TESTNET_CONFIG } from "./constants";
-import * as nearUtils from '../utils/near';
-import { CannotMint3DToken } from "../error/CannotMint3DToken";
-import BN from "bn.js";
-import { getStoreNameFromAccount } from "../utils/nanostore";
-import { JsonToUint8Array } from "../utils/near";
+import { connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletConnection } from "near-api-js";
+import { BehaviorSubject, map, shareReplay } from "rxjs";
+import { CannotConnectError, CannotDisconnectError } from "../error";
+import { NearNetwork } from "../types";
+import { NANOSTORE_CONTRACT_NAME, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import { initializeExternalConstants } from "../utils/external-constants";
 import { KeyStore } from "near-api-js/lib/key_stores";
-import { uploadReference } from '@mintbase-js/storage';
-import { Action, createTransaction, functionCall } from "near-api-js/lib/transaction";
-import { base_decode } from "near-api-js/lib/utils/serialize";
-import { PublicKey } from "near-api-js/lib/utils"; 
-import { NanostoreGraphql } from "./graphql";
-import { NanostoreBackend } from "./nanostore.backend";
-import { ReferenceObject } from "./interfaces"; 
-import { toBN } from "../utils/helpers";
-// import { initWalletSelctor } from "./wallet-selector";
+import { purchaseToken } from "./functions/transactions.functions";
+import { deployStore } from "./functions/store-creation.functions";
+import { callToPrint } from "./functions/printing.funtions";
 
-const elliptic = require("elliptic").ec;
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
  * All logic attached to mintbase has been separated to isolate the effects of future updates
  */
-export class Nanostore {
+export class NanostoreWallet {
     /** Internal subject that stores login state */
-  private _isLogged$ = new BehaviorSubject(false);
+  // private _isLogged$ = new BehaviorSubject(false);
 
+  private _currentAccount$ = new BehaviorSubject<ConnectedWalletAccount | null>(null);
+  public currentAccount$ = this._currentAccount$.asObservable();
   /** External public observable to login state */
-  public isLogged$ = this._isLogged$.asObservable().pipe(shareReplay());
-
-  /** Name that give us access to contract */
-  public contractName: string | undefined;
-
-  /** Account key for connected user (you) */
-  public account: ConnectedWalletAccount | undefined;
+  public isLogged$ = this._currentAccount$.asObservable()
+  .pipe(
+    map((account) => {
+      if(!account) return false;
+      return true
+    }),
+    shareReplay(1)
+    );
 
   // Internal used variables
   private activeWalletConnection?: WalletConnection;
@@ -46,14 +35,7 @@ export class Nanostore {
   private constants?: any;
   private keyStore?: KeyStore;
 
-  public nanostoreBackend;
-
-  public activeAccount$?: Account;
-
-  // Public acces to graphQl queries
-  public mintbaseGraphql: any;
-  public nanostoreGraphql: NanostoreGraphql;
-
+  
   /**
    * @MF TODO: Move initialization from constructor to static public method ?
    * @description The constructor only sets three variables: apiKey, networkName and mintbaseWallet
@@ -66,9 +48,6 @@ export class Nanostore {
     private apiKey: string,
     public networkName: NearNetwork
   ) {
-
-    this.nanostoreBackend = new NanostoreBackend();
-    this.nanostoreGraphql = new NanostoreGraphql();
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
     switch (networkName) {
@@ -81,6 +60,8 @@ export class Nanostore {
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
+    this.init()
+
 
   }
 
@@ -105,7 +86,6 @@ export class Nanostore {
     
   {   
     if (this.isConnected()) {
-      this._isLogged$.next(true);
       console.warn('near-lib connect(): connecting an already connected wallet.')
       return;
     }
@@ -124,10 +104,10 @@ export class Nanostore {
         failureUrl: '',
       });
       console.log('signIn : ', signIn);
-
-      this._isLogged$.next(true);
+      const account = this.activeWalletConnection.account();
+      this._currentAccount$.next(account);
     } catch (error) {
-      this._isLogged$.next(false);
+      this._currentAccount$.next(null);
       throw CannotConnectError.becauseMintbaseLoginFail();
     }
   }
@@ -143,6 +123,11 @@ export class Nanostore {
       networkName: this.networkName,
     })
 
+    if(this.activeNearConnection || this.activeWalletConnection) {
+      console.log('already initialized');
+      return;
+    }
+
     const keyStore = new keyStores.BrowserLocalStorageKeyStore();
     this.keyStore = keyStore;
     const _connectionObject = {
@@ -157,7 +142,6 @@ export class Nanostore {
     this.activeNearConnection = near;
     this.activeWalletConnection = new WalletConnection(near, 'Nanostore');
     let initResponse;
-
     try {
       console.log('Init response --------------------------- : ', initResponse);
     } catch (error) {
@@ -165,470 +149,39 @@ export class Nanostore {
     }
    
     if(this.activeWalletConnection.isSignedIn()) {
-        this._isLogged$.next(true);
-        const accountId = this.activeWalletConnection.getAccountId();
-        console.log('accountId : ', accountId)
-        console.log('activeWalletConnection : ', this.activeWalletConnection.account())
-        this.activeAccount$ = await this.activeNearConnection.account(accountId);
-        console.log('activeAccount$ : ', this.activeAccount$)
+        const account = this.activeWalletConnection.account();
+        this._currentAccount$.next(account);
+        
         const walletDetails = await this.getActiveAccountDetails();
         console.log('Connection Details ... ', walletDetails)
     } else {
-        this._isLogged$.next(false);
-    }
-  }
-  
-  /**
-   * @description
-   * ------------------------------------------------------------------------------------
-   */
-  public async buyToken(token_id: string) {
-
-    const account = this.activeWalletConnection?.account()
-    const accountId = this.activeWalletConnection?.account().accountId
-    const gas = MAX_GAS;
-
-    if (!account || !accountId) throw cannotMakeOfferError.becauseUserNotFound();
-
-    // Mitbase market connection
-    const contract = new Contract(
-      account,
-      MARKETPLACE_HOST_NEAR_ACCOUNT,
-      {
-        viewMethods:
-            MINTBASE_MARKET_CONTRACT_VIEW_METHODS,
-        changeMethods:
-            MINTBASE_MARKET_CONTRACT_CALL_METHODS,
-      }
-    )
-    try {
-
-      const amount = utils.format.parseNearAmount('1')
-        // @ts-ignore: method does not exist on Contract type
-        await contract.buy({
-            args: {
-              nft_contract_id: NANOSTORE_CONTRACT_NAME, //  'nanostore_store.dev-1675363616907-84002391197707',
-              token_id
-            },
-            gas,
-            amount: amount, // attached deposit in yoctoNEAR
-        })
-    } catch (error) {
-        console.log('error: ', error)
-        throw cannotMakeOfferError.becauseMintbaseError();
+        this._currentAccount$.next(null);
     }
   }
 
-  /**
-   * @TODO Revisar a fondo
-   * ------------------------------------------------------------------------------------
-   * @param tokenId 
-   * @param price 
-   */
-  public async deposit_and_set_price(
-    tokenId: number,
-	  price: number
-  ) {
-    const priceInNear = utils.format.parseNearAmount(price.toString());
-    console.log('priceInNear: ', priceInNear);
-	  if(!priceInNear) throw new Error('not price provided');
-    
-    const args = {};
-    const args2 = {
-      autotransfer: true,
-      token_id: tokenId.toString(),
-      account_id:MARKETPLACE_HOST_NEAR_ACCOUNT,
-      msg: JSON.stringify({
-        price: priceInNear.toString(),
-        autotransfer: true,
-      })
-    }
-    
-    const args_base64 = JsonToUint8Array(args);
-    const args2_base64 = JsonToUint8Array(args2);
-
-    const market_cost = 0.02;
-    const listCost = nearUtils.calculateListCost(1);
-    const deposit = utils.format.parseNearAmount(listCost.toString()) ?? '0';
-    const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
-    let publicKeys;
-
-    const keys = await this.activeAccount$?.getAccessKeys();
-    if(keys !== undefined) {
-      publicKeys = keys.find(key => key.public_key)?.public_key;
-      
-    } else {
-      const ec = new elliptic("secp256k1");
-      const keyPair = ec.genKeyPair();
-      publicKeys = keyPair.getPublic().encode("hex");
-    }
-  
-    
-
-    // const publicKey = this.activeNearConnection?.config.keyPair.getPublic().encode("hex");
-
-    const transactions: NearTransaction[] = [
-      {
-        functionCalls: [
-          {
-            args: args_base64,
-            deposit: new BN(market_deposit),
-            gas: MAX_GAS,
-            methodName: "deposit_storage"
-          }
-        ],
-        signerId: "",
-        receiverId: MARKETPLACE_HOST_NEAR_ACCOUNT,
-        publicKey: publicKeys,
-        actions: [],
-        nonce: toBN(0),
-        blockHash: args_base64,
-        encode: () => args_base64
-      },
-      {
-        functionCalls: [
-          {
-            args: args2_base64,
-            deposit: new BN(deposit),
-            gas: MAX_GAS,
-            methodName: "nft_approve"
-          }
-        ],
-        signerId: "",
-        receiverId: NANOSTORE_CONTRACT_NAME,
-        publicKey: publicKeys,
-        actions: [],
-        nonce: toBN(0),
-        blockHash: args_base64,
-        encode: () => args_base64
-      }
-    ];
-    try {
-      await this.executeMultipleTransactions({transactions});
-    } catch (error) {
-      console.log(' ****************  error: ', error);
-    }
+  // TODO: open for token on other contract??
+  public purchaseToken(token_id: string) {
+    const account = this._currentAccount$.value || undefined
+    purchaseToken(token_id, account)
   }
 
-  // @TODO move to another object
-  public async executeMultipleTransactions({
-    transactions,
-    options,
-  }: {
-    transactions: NearTransaction[]
-    options?: OptionalMethodArgs
-  }): Promise<void> {
-    const nearTransactions = await Promise.all(
-      transactions.map(async (tx, i) => {
-        return await this.createTransaction({
-          receiverId: tx.receiverId,
-          actions: tx.functionCalls.map((fc) => {
-            return functionCall(fc.methodName, fc.args, fc.gas, fc.deposit)
-          }),
-          nonceOffset: i + 1,
-        })
-      })
-    )
-
-    this.activeWalletConnection?.requestSignTransactions({
-      transactions: nearTransactions,
-      callbackUrl: options?.callbackUrl,
-      meta: options?.meta,
-    })
-  }
-
-  // @TODO move to another object
-  public async createTransaction({
-    receiverId,
-    actions,
-    nonceOffset,
-  }: {
-    receiverId: any
-    actions: Action[]
-    nonceOffset: number
-  }) {
-    if (!this.activeWalletConnection || !this.activeNearConnection) {
-      throw new Error(`No active wallet or NEAR connection.`)
-    }
-
-    const localKey =
-      await this.activeNearConnection?.connection.signer.getPublicKey(
-        this.activeWalletConnection?.account().accountId,
-        this.activeNearConnection.connection.networkId
-      )
-
-    const accessKey = await this.activeWalletConnection
-      ?.account()
-      .accessKeyForTransaction(receiverId, actions, localKey)
-
-    if (!accessKey) {
-      throw new Error(
-        `Cannot find matching key for transaction sent to ${receiverId}`
-      )
-    }
-
-    const block = await this.activeNearConnection?.connection.provider.block({
-      finality: 'final',
-    })
-
-    if (!block) {
-      throw new Error(`Cannot find block for transaction sent to ${receiverId}`)
-    }
-
-    const blockHash = base_decode(block?.header?.hash)
-
-    const publicKey = PublicKey.from(accessKey.public_key)
-    const nonce = accessKey.access_key.nonce + nonceOffset
-
-    return createTransaction(
-      this.activeWalletConnection?.account().accountId,
-      publicKey,
-      receiverId,
-      nonce,
-      actions,
-      blockHash
-    )
+  // TODO: only for admin
+  public async deployStore(symbol: string) {
+    const account = this._currentAccount$.value || undefined
+    await deployStore(symbol, account)
   }
 
   public async callToPrint(
     tokenId: string
   ) {
-    try {
-      await this.nanostoreBackend.print(tokenId);
-    } catch (error) {
-      console.log('ha fallado el print: ', error);
-    }
-    
+    await callToPrint(tokenId)
   }
 
-  /**
-   * @description call nft_deposit_print on contract
-   * --------------------------------------------------------------
-   * @param token_id 
-   * @param printing_fee 
-   */
-  public async depositToPrint(
-    token_id: number, 
-    printing_fee: number,
-    printerId: string
-  ) {
-    const account = this.activeWalletConnection?.account()
-    const accountId = this.activeWalletConnection?.account().accountId
 
-	if (!account || !accountId) throw new Error('Undefined account');
-
-  await this.nanostoreBackend.registerDepositToPrint(
-    token_id.toString(),
-    printing_fee.toString(),
-    accountId,
-    printerId
-  )
-
-  const amount = utils.format.parseNearAmount(printing_fee.toString());
-
-  if(!amount) return;
-
-  const amount_bn = new BN(amount);
-
-  // @TODO Falta verificacion en frontend (Esto será en otro metodo despues del sendmoney)
-  await this.nanostoreBackend.registerDepositPayedToPrint(token_id.toString());
-
-  // Esto será un paso posterior
-  this.callToPrint(token_id.toString());
-
-  const transfer = await account.sendMoney(
-    NANOSTORE_CONTRACT_NAME,
-    amount_bn
-  );
-
-  // Falta registrar el payment-done
-    // Creamos el print-event en el backend
-  }
-
-  /**
-   * @description Creates a store. For future developments.
-   * ------------------------------------------------------------------------------------
-   * @param storeId Store name
-   * @param symbol Store symbol
-   */
-  public async deployStore(
-    symbol: string,
-    options?: OptionalMethodArgs & { attachedDeposit?: string; icon?: string }
-  ): Promise<boolean> {
-    const account = this.activeWalletConnection?.account()
-    const accountId = this.activeWalletConnection?.account().accountId
-
-	if (!account || !accountId) throw new Error('Undefined account');
-
-    const gas = MAX_GAS;
-	// console.log('saccount: ', account);
-
-    const contract = new Contract(
-      account,
-      NANOSTORE_FACTORY_CONTRACT_NAME,
-      {
-          viewMethods: NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS,
-          changeMethods: NANOSTORE_FACTORY_CONTRACT_CALL_METHODS
-      }
-    )
-
-    const storeData = {
-      owner_id: accountId,
-      metadata: {
-        spec: 'nft-1.0.0',
-        name: getStoreNameFromAccount(account),
-        symbol: symbol.replace(/[^a-z0-9]+/gim, '').toLowerCase(),
-        icon: options?.icon ?? MINTBASE_32x32_BASE64_DARK_LOGO,
-        base_uri: null,
-        reference: null,
-        reference_hash: null,
-      },
-    }
-
-    const attachedDeposit = DEPLOY_STORE_COST
-      //: new BN(options?.attachedDeposit)
-
-    // @ts-ignore: method does not exist on Contract type
-    await contract.create_store({
-      meta: options?.meta,
-      callbackUrl: options?.callbackUrl,
-      args: storeData,
-      gas,
-      amount: attachedDeposit,
-    })
-
-    return true;
-  }
-
-  /**
-   * @description
-   * ---------------------------------------------------
-   * @param imageFile 
-   * @param stlFile 
-   * @param numToMint 
-   */
-  public async mint(
-    imageFile: File,
-    stlFile: File,
-    numToMint: number,
-    fileName: string
-  ) {
-
-    if(!this.activeWalletConnection) throw new Error('No wallet Connection');
-    if(!this.isConnected()) throw new Error('Not logged'); 
-
-    let responseUpload;
-
-    const referenceObject: ReferenceObject = {
-      title: 'pruebas nanostore title',
-      description: 'pruebas nanostore description',
-      //for the media to be uploaded to arweave it must be contained in one of these 3 fields
-      media: imageFile,
-      category: 'proves nanostore',
-      tags: [{tag1 : "tag prueba nanostore"}],
-      // Esto se guardará en el backend
-      extra: [] // {trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}
-    }
-
-    try {
-      responseUpload = await uploadReference(referenceObject);
-    } catch (error) {
-      throw new Error('Mint storage error');
-    }
-
-    try {
-      const reference = responseUpload.id;
-      const accountId = this.activeWalletConnection.account().accountId
-      await this.nanostoreBackend.mint(stlFile, numToMint, accountId, reference, fileName);
-    } catch (error) {
-      throw new Error('Mint Backend error');
-    }
-  }
-
-    /**
-     * @description Mint an nft that could be 3d printed
-     * Legacy method
-     * ------------------------------------------------------------------------------------
-     * @param {ConnectedWalletAccount} account
-     * @throws {CannotMint3DToken} code: 1013 - If contract call or creation throws eror
-     */
-    public async mintByLoggedUser(
-      file: File, 
-      printerFile: File,
-      numToMint: number
-    ): Promise<void> {
-
-      if(!this.activeWalletConnection) throw new Error('No activeWallet Connection defined');
-      
-      const referenceObject: ReferenceObject = {
-        title: 'proves 1',
-        description: 'proves 2',
-        //for the media to be uploaded to arweave it must be contained in one of these 3 fields
-        media: file,
-        category: 'proves 3',
-        tags: [{tag1 : "tag prueba 1"}],
-        // Esto se guardará en el backend
-        extra: [{trait_type: "material1 - prueba2", value: 5}, {trait_type: "material2 - prueba2", value: 11}, {trait_type: "material3 - prueba2", value: 10}]
-      }
-      
-      const response = await uploadReference(referenceObject);
-
-      const meta = JSON.stringify({
-          type: 'mint',
-          args: {
-              contractAddress: NANOSTORE_CONTRACT_NAME,
-              amount: numToMint
-          }
-      });
-
-        // Ejecutamos el contrato con la cuenta logeada (app user)
-        const account = this.activeWalletConnection.account();
-        let contract;
-        
-        try {
-            // NANOSTORE contract interaction
-            contract = new Contract(
-                account, 
-                NANOSTORE_CONTRACT_NAME,
-                {
-                    viewMethods: NANOSTORE_CONTRACT_VIEW_METHODS,
-                    changeMethods: NANOSTORE_CONTRACT_CALL_METHODS
-                }
-            );
-        } catch (error) {
-            throw CannotMint3DToken.becauseContractError();
-        }
-
-        try {
-            // @ts-ignore: method does not exist on Contract type
-            const mintResponse = await contract.nft_batch_mint({
-            meta,
-            callbackUrl: "",
-            args: {
-                owner_id: account.accountId,
-                metadata: {
-                    reference: response.id,
-                    extra: 'Nanostore testnet'
-                },
-                // @TODO: Que hacemos con esto ?
-                royalty_args: null,
-                num_to_mint: numToMint
-            },
-            gas: MAX_GAS,
-            amount: ONE_YOCTO,
-            });
-
-            
-            this.nanostoreBackend.payPrintedToken(file, 'loco', 'aww');
-
-        } catch (error) {
-            throw CannotMint3DToken.becauseContractError();
-        }
-    }
 
   public async getActiveAccountDetails(): Promise<any>
   {
-    const account = this.activeWalletConnection?.account()
+    const account = this._currentAccount$.value
     const accountId = account?.accountId
     // @TODO throw error
     if (!accountId) return 
@@ -662,66 +215,6 @@ export class Nanostore {
     return data;
   }
 
-  /**
-   * @description
-   * ------------------------------------------------------------------------------------
-   * @returns 
-   */
-  public async getMyTokens() {
-
-    const account = this.activeWalletConnection?.account();
-    if(!account) throw new Error('No account defined');
-    const accountId = account.accountId;
-
-    return await this.nanostoreGraphql.getTokensFromOwner(accountId);
-
-  }
-
-  /**
-   * TODO: check retryFetch logic
-   * TODO: type token returned
-   * @description Returns all the tokens minted with nanostore contract
-   * ------------------------------------------------------------------------------------
-   * @param offset
-   * @param limit
-   * @throws {CannotGetTokenError}
-   */
-    public async getAllTokensFromNanostore( 
-        offset: number = 0, 
-		    limit: number = 10
-    ): Promise<any>
-    {
-      if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
-      /* New mintbase lib example
-
-      const {data , error} = await fetchGraphQl({
-        query: QUERIES.storeNftsQuery,
-        variables: {
-          condition: {
-            nft_contract_id: { _in: NANOSTORE_CONTRACT_NAME }
-          },
-          limit: 12,
-          offset: 0,
-        },
-        network: 'testnet'
-      });
-      */
-      try {
-        return await this.nanostoreGraphql.getAllTokens(offset,limit);
-      } catch ($e) {
-        throw new Error('Graphql error.');
-      }
-      
-    }
-
-    /**
-     * @description
-     * ------------------------------------------------------------------------------------
-     */
-    public getGraphQlObject() {
-      if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
-      return this.nanostoreGraphql;
-    }
 
   /**
    * @description Do signOut, clean local variables and update logged observable
@@ -730,11 +223,11 @@ export class Nanostore {
    */
   public disconnect(): void 
   {
-    if(!this._isLogged$.value) throw CannotDisconnectError.becauseAlreadyDisconnected();
+    if(!this._currentAccount$.value) throw CannotDisconnectError.becauseAlreadyDisconnected();
     
     this.activeWalletConnection?.signOut()
     this.activeNearConnection = undefined
-    this.activeAccount$= undefined
-    this._isLogged$.next(false);
+    // this.activeAccount$= undefined
+    this._currentAccount$.next(null);
   }
 }
