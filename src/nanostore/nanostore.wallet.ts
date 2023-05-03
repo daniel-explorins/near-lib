@@ -1,9 +1,9 @@
-import { Account, connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletAccount, WalletConnection } from "near-api-js";
+import { Account, connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletConnection } from "near-api-js";
 import { BehaviorSubject, shareReplay } from "rxjs";
 import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_NAME, ONE_YOCTO } from "../constants";
 import { CannotConnectError, CannotDisconnectError, cannotMakeOfferError } from "../error";
-import { MINTBASE_MARKETPLACE_TESTNET, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
-import { NearNetwork, NearTransaction, Network, OptionalMethodArgs } from "../types";
+import { MARKETPLACE_HOST_NEAR_ACCOUNT, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "../mintbase/constants";
+import { NearNetwork, NearTransaction, OptionalMethodArgs } from "../types";
 import { NANOSTORE_CONTRACT_CALL_METHODS, NANOSTORE_CONTRACT_NAME, NANOSTORE_CONTRACT_VIEW_METHODS, NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import * as nearUtils from '../utils/near';
 import { CannotMint3DToken } from "../error/CannotMint3DToken";
@@ -19,6 +19,8 @@ import { PublicKey } from "near-api-js/lib/utils";
 import { NanostoreGraphql } from "./graphql";
 import { NanostoreBackend } from "./nanostore.backend";
 import { ReferenceObject } from "./interfaces"; 
+import { toBN } from "../utils/helpers";
+// import { initWalletSelctor } from "./wallet-selector";
 
 const elliptic = require("elliptic").ec;
 /** 
@@ -39,14 +41,14 @@ export class Nanostore {
   public account: ConnectedWalletAccount | undefined;
 
   // Internal used variables
-  private activeWallet?: WalletConnection;
+  private activeWalletConnection?: WalletConnection;
   private activeNearConnection?: Near;
   private constants?: any;
   private keyStore?: KeyStore;
 
   public nanostoreBackend;
 
-  public activeAccount?: Account;
+  public activeAccount$?: Account;
 
   // Public acces to graphQl queries
   public mintbaseGraphql: any;
@@ -62,7 +64,7 @@ export class Nanostore {
    */
   public constructor(
     private apiKey: string,
-    public networkName: NearNetwork = NearNetwork.testnet
+    public networkName: NearNetwork
   ) {
 
     this.nanostoreBackend = new NanostoreBackend();
@@ -88,8 +90,8 @@ export class Nanostore {
    */
   public isConnected(): boolean {
 
-    if(!this.activeWallet) return false;
-    return this.activeWallet.isSignedIn() ?? false
+    if(!this.activeWalletConnection) return false;
+    return this.activeWalletConnection.isSignedIn() ?? false
 
   }
 
@@ -99,27 +101,29 @@ export class Nanostore {
    * ------------------------------------------------------------------------------------
    * @throws {CannotConnectError} if connection to mintbase could not be made
    */
-  public async connect(): Promise<void>
-  {    
+  public async connect()// : Promise<void>
+    
+  {   
     if (this.isConnected()) {
       this._isLogged$.next(true);
       console.warn('near-lib connect(): connecting an already connected wallet.')
       return;
     }
 
-    if(!this.activeWallet) {
-      console.log('no active wallet');
+    if(!this.activeWalletConnection) {
+      console.log('no active wallet connection');
       return;
     }
     
     try {
       console.log('loggin !! .......');
       // https://docs.near.org/tools/near-api-js/wallet
-      this.activeWallet.requestSignIn({
+      const signIn = await this.activeWalletConnection?.requestSignIn({
         contractId: NANOSTORE_CONTRACT_NAME,
         successUrl: '',
         failureUrl: '',
       });
+      console.log('signIn : ', signIn);
 
       this._isLogged$.next(true);
     } catch (error) {
@@ -151,7 +155,7 @@ export class Nanostore {
     const near = await nearConnect(_connectionObject);
 
     this.activeNearConnection = near;
-    this.activeWallet = new WalletAccount(near, 'Nanostore');
+    this.activeWalletConnection = new WalletConnection(near, 'Nanostore');
     let initResponse;
 
     try {
@@ -160,12 +164,14 @@ export class Nanostore {
         console.log('Init error: ', error);
     }
    
-    if(this.activeWallet.isSignedIn()) {
+    if(this.activeWalletConnection.isSignedIn()) {
         this._isLogged$.next(true);
-        const accountId = this.activeWallet.getAccountId();
-        this.activeAccount = await this.activeNearConnection.account(accountId);
-        
-        const walletDetails = await this.details();
+        const accountId = this.activeWalletConnection.getAccountId();
+        console.log('accountId : ', accountId)
+        console.log('activeWalletConnection : ', this.activeWalletConnection.account())
+        this.activeAccount$ = await this.activeNearConnection.account(accountId);
+        console.log('activeAccount$ : ', this.activeAccount$)
+        const walletDetails = await this.getActiveAccountDetails();
         console.log('Connection Details ... ', walletDetails)
     } else {
         this._isLogged$.next(false);
@@ -178,8 +184,8 @@ export class Nanostore {
    */
   public async buyToken(token_id: string) {
 
-    const account = this.activeWallet?.account()
-    const accountId = this.activeWallet?.account().accountId
+    const account = this.activeWalletConnection?.account()
+    const accountId = this.activeWalletConnection?.account().accountId
     const gas = MAX_GAS;
 
     if (!account || !accountId) throw cannotMakeOfferError.becauseUserNotFound();
@@ -187,7 +193,7 @@ export class Nanostore {
     // Mitbase market connection
     const contract = new Contract(
       account,
-      MINTBASE_MARKETPLACE_TESTNET,
+      MARKETPLACE_HOST_NEAR_ACCOUNT,
       {
         viewMethods:
             MINTBASE_MARKET_CONTRACT_VIEW_METHODS,
@@ -231,7 +237,7 @@ export class Nanostore {
     const args2 = {
       autotransfer: true,
       token_id: tokenId.toString(),
-      account_id:MINTBASE_MARKETPLACE_TESTNET,
+      account_id:MARKETPLACE_HOST_NEAR_ACCOUNT,
       msg: JSON.stringify({
         price: priceInNear.toString(),
         autotransfer: true,
@@ -247,7 +253,7 @@ export class Nanostore {
     const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
     let publicKeys;
 
-    const keys = await this.activeAccount?.getAccessKeys();
+    const keys = await this.activeAccount$?.getAccessKeys();
     if(keys !== undefined) {
       publicKeys = keys.find(key => key.public_key)?.public_key;
       
@@ -272,10 +278,10 @@ export class Nanostore {
           }
         ],
         signerId: "",
-        receiverId: MINTBASE_MARKETPLACE_TESTNET,
+        receiverId: MARKETPLACE_HOST_NEAR_ACCOUNT,
         publicKey: publicKeys,
         actions: [],
-        nonce: 0,
+        nonce: toBN(0),
         blockHash: args_base64,
         encode: () => args_base64
       },
@@ -292,7 +298,7 @@ export class Nanostore {
         receiverId: NANOSTORE_CONTRACT_NAME,
         publicKey: publicKeys,
         actions: [],
-        nonce: 0,
+        nonce: toBN(0),
         blockHash: args_base64,
         encode: () => args_base64
       }
@@ -324,7 +330,7 @@ export class Nanostore {
       })
     )
 
-    this.activeWallet?.requestSignTransactions({
+    this.activeWalletConnection?.requestSignTransactions({
       transactions: nearTransactions,
       callbackUrl: options?.callbackUrl,
       meta: options?.meta,
@@ -341,17 +347,17 @@ export class Nanostore {
     actions: Action[]
     nonceOffset: number
   }) {
-    if (!this.activeWallet || !this.activeNearConnection) {
+    if (!this.activeWalletConnection || !this.activeNearConnection) {
       throw new Error(`No active wallet or NEAR connection.`)
     }
 
     const localKey =
       await this.activeNearConnection?.connection.signer.getPublicKey(
-        this.activeWallet?.account().accountId,
+        this.activeWalletConnection?.account().accountId,
         this.activeNearConnection.connection.networkId
       )
 
-    const accessKey = await this.activeWallet
+    const accessKey = await this.activeWalletConnection
       ?.account()
       .accessKeyForTransaction(receiverId, actions, localKey)
 
@@ -375,7 +381,7 @@ export class Nanostore {
     const nonce = accessKey.access_key.nonce + nonceOffset
 
     return createTransaction(
-      this.activeWallet?.account().accountId,
+      this.activeWalletConnection?.account().accountId,
       publicKey,
       receiverId,
       nonce,
@@ -406,8 +412,8 @@ export class Nanostore {
     printing_fee: number,
     printerId: string
   ) {
-    const account = this.activeWallet?.account()
-    const accountId = this.activeWallet?.account().accountId
+    const account = this.activeWalletConnection?.account()
+    const accountId = this.activeWalletConnection?.account().accountId
 
 	if (!account || !accountId) throw new Error('Undefined account');
 
@@ -449,8 +455,8 @@ export class Nanostore {
     symbol: string,
     options?: OptionalMethodArgs & { attachedDeposit?: string; icon?: string }
   ): Promise<boolean> {
-    const account = this.activeWallet?.account()
-    const accountId = this.activeWallet?.account().accountId
+    const account = this.activeWalletConnection?.account()
+    const accountId = this.activeWalletConnection?.account().accountId
 
 	if (!account || !accountId) throw new Error('Undefined account');
 
@@ -508,7 +514,7 @@ export class Nanostore {
     fileName: string
   ) {
 
-    if(!this.activeWallet) throw new Error('No wallet');
+    if(!this.activeWalletConnection) throw new Error('No wallet Connection');
     if(!this.isConnected()) throw new Error('Not logged'); 
 
     let responseUpload;
@@ -532,7 +538,7 @@ export class Nanostore {
 
     try {
       const reference = responseUpload.id;
-      const accountId = this.activeWallet.account().accountId
+      const accountId = this.activeWalletConnection.account().accountId
       await this.nanostoreBackend.mint(stlFile, numToMint, accountId, reference, fileName);
     } catch (error) {
       throw new Error('Mint Backend error');
@@ -552,7 +558,7 @@ export class Nanostore {
       numToMint: number
     ): Promise<void> {
 
-      if(!this.activeWallet) throw new Error('No activeWallet defined');
+      if(!this.activeWalletConnection) throw new Error('No activeWallet Connection defined');
       
       const referenceObject: ReferenceObject = {
         title: 'proves 1',
@@ -576,7 +582,7 @@ export class Nanostore {
       });
 
         // Ejecutamos el contrato con la cuenta logeada (app user)
-        const account = this.activeWallet.account();
+        const account = this.activeWalletConnection.account();
         let contract;
         
         try {
@@ -620,9 +626,9 @@ export class Nanostore {
         }
     }
 
-  public async details(): Promise<any>
+  public async getActiveAccountDetails(): Promise<any>
   {
-    const account = this.activeWallet?.account()
+    const account = this.activeWalletConnection?.account()
     const accountId = account?.accountId
     // @TODO throw error
     if (!accountId) return 
@@ -663,7 +669,7 @@ export class Nanostore {
    */
   public async getMyTokens() {
 
-    const account = this.activeWallet?.account();
+    const account = this.activeWalletConnection?.account();
     if(!account) throw new Error('No account defined');
     const accountId = account.accountId;
 
@@ -726,9 +732,9 @@ export class Nanostore {
   {
     if(!this._isLogged$.value) throw CannotDisconnectError.becauseAlreadyDisconnected();
     
-    this.activeWallet?.signOut()
+    this.activeWalletConnection?.signOut()
     this.activeNearConnection = undefined
-    this.activeAccount = undefined
+    this.activeAccount$= undefined
     this._isLogged$.next(false);
   }
 }
