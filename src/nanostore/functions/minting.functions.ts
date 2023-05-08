@@ -5,7 +5,7 @@ import { connect as nearConnect, ConnectedWalletAccount } from "near-api-js";
 
 const nanoStoreBackend = new NanostoreBackend();
 
-function getReferenceObject(
+/* function getReferenceObject(
     title: string,
     description: string,
     // TODO set category type
@@ -26,7 +26,7 @@ function getReferenceObject(
       }
     return referenceObject;
 
-}
+} */
 
 /**
    * @description
@@ -35,11 +35,9 @@ function getReferenceObject(
    * @param stlFile 
    * @param numToMint 
    */
-export async function mint(
+export async function mintToken(
     referenceObject: ReferenceObject,
-    stlFile: File,
     numToMint: number,
-    fileName: string,
     account?: ConnectedWalletAccount,
   ) {
 
@@ -52,15 +50,17 @@ export async function mint(
 
     try {
       responseUpload = await uploadReference(referenceObject);
-    } catch (error) {
-      throw new Error('Mint storage error');
+    } catch (error: any) {
+        console.log('error ', error)
+      throw new Error('Mint storage error: ' + error.message);
     }
 
     try {
       const reference = responseUpload.id;
       const accountId = account.accountId
-      await nanoStoreBackend.mint(stlFile, numToMint, accountId, reference, fileName);
+      return await nanoStoreBackend.mint(numToMint, accountId, reference, referenceObject.nano_id);
     } catch (error) {
+        console.log('error ', error)
       throw new Error('Mint Backend error');
     }
   }

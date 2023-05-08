@@ -33,29 +33,44 @@ export class NanostoreBackend {
    * @returns 
    */
   public async mint(
-    stlFile: File, 
     numToMint: number, 
     owner: string,
     reference: string,
-    fileName: string
+    nanoId: string
   ) {
 
-    
+      const req = {
+        nanoId: nanoId,
+        amount: numToMint,
+        creator: owner,
+        reference: reference
+      }
+      return new Promise((resolve, reject) => {
+        anonApiCall.post("/product/near/mint", req)
+        .then(({ data, status }) => {
+          console.log('data ', data)
+          resolve(data);
+        })
+        .catch((error) => { reject(error) })
+    });
+  }
+
+  /* private getMintFormData(
+    // stlFile: File,
+    numToMint: number,
+    owner: string,
+    reference: string,
+    // fileName: string
+  ) {
     const formData = new FormData();
-    formData.append("file", stlFile, fileName);
-    formData.append("numToMint", numToMint.toString());
+    // formData.append("file", stlFile, fileName);
+    formData.append("amount", numToMint.toString());
     formData.append("owner", owner);
     formData.append("reference", reference);
-    formData.append("originalName", fileName);
+    // formData.append("originalName", fileName);
 
-    return new Promise((resolve, reject) => {
-		  uploadFileCall.post("/near-product/mint", formData)
-			.then(({ data, status }) => {
-				resolve(data);
-			})
-			.catch((error) => { reject(error) })
-	});
-  }
+    return formData;
+  } */
 
   public async print(
     tokenId: string

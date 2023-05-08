@@ -16,7 +16,8 @@
     "dev": "nodemon --exec npm run build",
     "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
     "doc": "typedoc --out docs src && touch docs/.nojekyll",
-    "start:docs": "http-server ./docs"
+    "start:docs": "http-server ./docs",
+    "generate-ngrok-remote-access": "../../ngrok/ngrok http http://localhost:3000 --host-header=rewrite"
   },
   "keywords": [
     "NFT",

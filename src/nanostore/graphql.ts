@@ -46,11 +46,10 @@ export class NanostoreGraphql {
         offset: number = 0,
         limit: number = 10
     ): Promise<tokensByOwnerQueryResponse[]> {
-    
     const query = gql`{
       mb_views_nft_tokens(
         where: {
-          nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"},
+          nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}
           owner: {_eq: "${ownerId}"}
         }
         offset: ${offset}
@@ -76,11 +75,12 @@ export class NanostoreGraphql {
    * @returns 
    * @throws Custom Error if cannot get data
    */
-  public async getAllTokens(
+  public async getAllStoreTokens(
     offset: number,
     limit: number
   ): Promise<any[]> {
     
+    // TODO filter on sale tokens only
     const query = gql`{
       mb_views_nft_tokens(
         where: {nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}}

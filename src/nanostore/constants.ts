@@ -1,10 +1,12 @@
 import { MintMetadata } from "mintbase";
 
+// TODO get this data from env frontend or backend
+
 export const NANOSTORE_CONTRACT_NAME = 'storepruebas4.nanostore.testnet'; // 'nanostore_store.dev-1675363616907-84002391197707'
 
 export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
 
-export const NANOSTORE_BACKEND_URL = 'https://85b0-54-73-118-61.ngrok-free.app';
+export const NANOSTORE_BACKEND_URL = 'https://a02e-79-155-18-236.ngrok-free.app';
 
 export const NANOSTORE_TESTNET_CONFIG = {
   networkId: "testnet",

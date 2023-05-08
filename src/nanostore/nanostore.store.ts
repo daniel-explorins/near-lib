@@ -64,7 +64,8 @@ export class Nanostore {
       });
       */
       try {
-        return await this.nanostoreGraphql.getAllTokens(offset,limit);
+        // TODO: filter on sale tokens only
+        return await this.nanostoreGraphql.getAllStoreTokens(offset,limit);
       } catch ($e) {
         throw new Error('Graphql error.');
       }

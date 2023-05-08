@@ -8,6 +8,8 @@ import { KeyStore } from "near-api-js/lib/key_stores";
 import { purchaseToken } from "./functions/transactions.functions";
 import { deployStore } from "./functions/store-creation.functions";
 import { callToPrint } from "./functions/printing.funtions";
+import { ReferenceObject } from "./interfaces";
+import { mintToken } from "./functions/minting.functions";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
@@ -127,7 +129,7 @@ export class NanostoreWallet {
       console.log('already initialized');
       return;
     }
-
+    // TODO: get env from backend
     const keyStore = new keyStores.BrowserLocalStorageKeyStore();
     this.keyStore = keyStore;
     const _connectionObject = {
@@ -175,6 +177,15 @@ export class NanostoreWallet {
     tokenId: string
   ) {
     await callToPrint(tokenId)
+  }
+
+  public async mintToken(
+    numToMint: number,
+    referenceObject: ReferenceObject
+    ) {
+    const account = this._currentAccount$.value || undefined
+
+    return await mintToken(referenceObject, numToMint, account)
   }
 
 
