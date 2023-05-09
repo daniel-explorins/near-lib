@@ -1,45 +1,19 @@
 import BN from 'bn.js'
 import { MetadataField } from 'mintbase';
 
-export const TESTNET_CONFIG = {
-  networkId: "testnet",
-  nodeUrl: "https://rpc.testnet.near.org",
-  walletUrl: "https://wallet.testnet.near.org",
-  helperUrl: "https://helper.testnet.near.org",
-  explorerUrl: "https://explorer.testnet.near.org",
-  headers: {
-    "Content-Type": "application/json",
-  },
-};
+export const CLOUD_URI = 'https://us-central1-omni-live.cloudfunctions.net';
+export const API_VERSION = '1'
 
-export const MAINNET_CONFIG = {
-  networkId: "mainnet",
-  nodeUrl: "https://rpc.mainnet.near.org",
-  walletUrl: "https://wallet.mainnet.near.org",
-  helperUrl: "https://helper.mainnet.near.org",
-  explorerUrl: "https://explorer.mainnet.near.org",
-  headers: {
-    "Content-Type": "application/json",
-  },
-};
+export const MINTBASE_GRAPHQL_MAINNET = 'https://mintbase-mainnet.hasura.app/';
+export const MINTBASE_GRAPHQL_TESTNET = 'https://mintbase-testnet.hasura.app/';
 
-export const CLOUD_URI = process.env.MINTBASEJS_CLOUD_URI
-export const API_VERSION = process.env.MINTBASEJS_API_VERSION || '1'
-
-export const API_BASE_NEAR_MAINNET =
-  process.env.MINTBASEJS_API_BASE_NEAR_MAINNET ||
-  'https://mintbase-mainnet.hasura.app/';
-
-export const API_BASE_NEAR_TESTNET =
-  process.env.MINTBASEJS_API_BASE_NEAR_TESTNET ||
-  'https://mintbase-testnet.hasura.app/';
-  
 export const BASE_ARWEAVE_URI = 'https://arweave.net'
 
 export const DEFAULT_APP_NAME = 'Mintbase.js'
 export const NEAR_LOCAL_STORAGE_KEY_SUFFIX = '_wallet_auth_key'
 
-// TODO: pull this from somewhere else?
+export const NANOSTORE_FACTORY_CONTRACT_NAME = 'nanostore3.testnet'
+
 export const FACTORY_CONTRACT_NAME = 'mintspace1.testnet'
 
 export const STORE_CONTRACT_VIEW_METHODS = [
@@ -65,33 +39,12 @@ export const STORE_CONTRACT_CALL_METHODS = [
   'batch_change_minters'
 ]
 
-export const MARKET_CONTRACT_VIEW_METHODS = [
-  
-]
-
-export const MARKET_CONTRACT_CALL_METHODS = [
-  'make_offer',
-  'accept_and_transfer',
-  'withdraw_offer',
-]
-
-export const FACTORY_CONTRACT_VIEW_METHODS = []
-export const FACTORY_CONTRACT_CALL_METHODS = ['create_store']
-
-export const CLOUD_STORAGE_CONFIG = {
-  apiKey: process.env.MINTBASEJS_FIREBASE_PUBLIC_API_KEY,
-  authDomain: process.env.MINTBASEJS_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.MINTBASEJS_FIREBASE_DATABASE_URL,
-  projectId: process.env.MINTBASEJS_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.MINTBASEJS_FIRSTORE_BUCKET_URL,
-}
-
 export const DEFAULT_ROYALTY_PERCENT = 1000
 
-export const MAX_GAS = new BN('200000000000000')
+export const MAX_GAS = new BN('300000000000000') // 2x10^14 (pasem al màxim gas permés 3x10^14)
 export const ONE_YOCTO = new BN('1')
 export const ZERO = new BN('0')
-export const DEPLOY_STORE_COST = new BN('7000000000000000000000000')
+export const DEPLOY_STORE_COST = new BN('10500000000000000000000000')
 
 export const VALID_FILE_FORMATS: { [key: string]: string[] } = {
   [MetadataField.Media]: ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'],
@@ -114,62 +67,6 @@ export const VALID_FILE_FORMATS: { [key: string]: string[] } = {
 
 export const FILE_UPLOAD_SIZE_LIMIT = 31457280 // 30MB
 
-export const REGEX_URL = new RegExp(
-  '^' +
-    // protocol identifier (optional)
-    // short syntax // still required
-    '(?:(?:(?:https?|ftp):)?\\/\\/)' +
-    // user:pass BasicAuth (optional)
-    '(?:\\S+(?::\\S*)?@)?' +
-    '(?:' +
-    // IP address exclusion
-    // private & local networks
-    '(?!(?:10|127)(?:\\.\\d{1,3}){3})' +
-    '(?!(?:169\\.254|192\\.168)(?:\\.\\d{1,3}){2})' +
-    '(?!172\\.(?:1[6-9]|2\\d|3[0-1])(?:\\.\\d{1,3}){2})' +
-    // IP address dotted notation octets
-    // excludes loopback network 0.0.0.0
-    // excludes reserved space >= 224.0.0.0
-    // excludes network & broadcast addresses
-    // (first & last IP address of each class)
-    '(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])' +
-    '(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}' +
-    '(?:\\.(?:[1-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))' +
-    '|' +
-    // host & domain names, may end with dot
-    // can be replaced by a shortest alternative
-    // (?![-_])(?:[-\\w\\u00a1-\\uffff]{0,63}[^-_]\\.)+
-    '(?:' +
-    '(?:' +
-    '[a-z0-9\\u00a1-\\uffff]' +
-    '[a-z0-9\\u00a1-\\uffff_-]{0,62}' +
-    ')?' +
-    '[a-z0-9\\u00a1-\\uffff]\\.' +
-    ')+' +
-    // TLD identifier name, may end with dot
-    '(?:[a-z\\u00a1-\\uffff]{2,}\\.?)' +
-    ')' +
-    // port number (optional)
-    '(?::\\d{2,5})?' +
-    // resource path (optional)
-    '(?:[/?#]\\S*)?' +
-    '$',
-  'i'
-)
-
-export const MIME_TYPES = {
-  gltf: 'model/gltf+json',
-  glb: 'model/gltf-binary',
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  gif: 'image/gif',
-  svg: 'image/svg+xml',
-  ogg: 'audio/ogg',
-  webm: 'video/webm',
-  mp4: 'video/mp4',
-  mpeg: 'audio/mpeg',
-  mp3: 'audio/mp3',
-}
 export const TWENTY_FOUR = 24
 export const SEVENTY_TWO = 72
 

@@ -26,7 +26,8 @@ export default {
     },
     GET_TOKEN: {
         MINTBASE_NOT_CONNECTED: '0501',
-        TIMEOUT_ERROR: '0502'
+        TIMEOUT_ERROR: '0502',
+        MINTBASE_ERROR: '0503'
     },
     MAKE_OFFER: {
         USER_NOT_FOUND: '0601',
@@ -52,5 +53,10 @@ export default {
     FETCH_MARKETPLACE: {
         MINTBASE_NOT_CONNECTED: '1001',
         MINTBASE_ERROR: '1002'
+    },
+    MINT_3D: {
+        MINTBASE_NOT_CONNECTED: '1011',
+        MINTBASE_ERROR: '1012',
+        CONTRACT_ERROR: '1013'
     },
 }

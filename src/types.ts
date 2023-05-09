@@ -1,11 +1,17 @@
-import { MetadataField, Constants, MintMetadata, Royalties, Token, Network } from 'mintbase';
+import { Constants, Royalties, Token } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
+import { ConnectedWalletAccount } from "near-api-js";
 
 /** Lib only works with near */
 export enum Chain {
   near = 'near',
 }
 
+
+export enum Network {
+  mainnet = 'mainnet',
+  testnet = 'testnet',
+}
 export interface NetworkConfig {
   networkId: string,
   nodeUrl: string
@@ -28,10 +34,10 @@ interface CloudStorageConstants {
   storageBucket: string
 }
 
-export interface WalletConfig {
+export interface MintbaseWalletConfig {
   apiKey: string
-  chain?: Chain
-  networkName?: Network
+  chain: Chain
+  networkName: Network
 }
 
 interface NearWalletDetails {
@@ -58,23 +64,13 @@ enum Visibility {
   safe = 'safe',
 }
 
+
 enum NearNetwork { 
   testnet = 'testnet',
-  mainnet = 'mainnet',
-  mintbase_testnet = 'mintbase_testnet',
-  mintbase_mainnet = 'mintbase_mainnet'
-};
+  mainnet = 'mainnet'
+}
 
-enum MetadataFieldExtension {
-  Printable = 'printable'
-};
-
-interface Metadata extends MintMetadata {
-  [MetadataFieldExtension.Printable]?: boolean
-};
-
-type MetadataFields = MetadataFieldExtension | MetadataField;
-
+type NanostoreNetwork = Network | NearNetwork;
 
 type OptionalMethodArgs = {
   gas?: string
@@ -83,8 +79,18 @@ type OptionalMethodArgs = {
   callbackUrl?: string
 }
 
-type WalletConnectProps = {
-  successUrl?: string
+interface NEARConfig {
+  networkId: string
+  nodeUrl: string
+  contractName: string
+  walletUrl: string
+  helperUrl: string
+}
+
+type ConstructNearWalletParams = {
+  network: NearNetwork,
+  contractAddress: string,
+  successUrl?: string,
   failureUrl?: string
 }
 
@@ -140,17 +146,18 @@ export interface MintbaseNftMetadata {
 }
 
 export {
+  ConnectedWalletAccount,
   MintbaseConstants,
   NearWalletDetails,
   NearToken,
   Account,
   Visibility,
-  MetadataFields,
-  Metadata,
   NearRoyalties,
   CloudStorageConstants,
   OptionalMethodArgs,
-  WalletConnectProps,
+  NEARConfig,
+  ConstructNearWalletParams,
   NearTransaction,
-  NearNetwork
+  NearNetwork,
+  NanostoreNetwork
 }

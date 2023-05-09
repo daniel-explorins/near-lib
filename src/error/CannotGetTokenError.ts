@@ -12,7 +12,15 @@ export class CannotGetTokenError extends Error {
         return new CannotGetTokenError(ERRORS.GET_TOKEN.MINTBASE_NOT_CONNECTED)
     }
 
+    public static becauseGraphqlNotConnected() {
+        return new CannotGetTokenError(ERRORS.GET_TOKEN.MINTBASE_NOT_CONNECTED)
+    }
+
     public static becauseTimeoutError() {
         return new CannotGetTokenError(ERRORS.GET_TOKEN.TIMEOUT_ERROR)
+    }
+
+    public static becauseMintbaseError() {
+        return new CannotGetTokenError(ERRORS.GET_TOKEN.MINTBASE_ERROR)
     }
 }
