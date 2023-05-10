@@ -1,10 +1,7 @@
-import { uploadReference } from "@mintbase-js/storage";
 import { anonApiCall, uploadFileCall } from "./api";
-import { ReferenceObject } from "./interfaces";
+import { BackendMintTokenRequest } from "./interfaces";
 
-export class NanostoreBackend {
-
-    
+export class NanostoreBackend {   
   /**
    * @TODO Llama al backend
    */
@@ -39,12 +36,13 @@ export class NanostoreBackend {
     nanoId: string
   ) {
 
-      const req = {
+      const req: BackendMintTokenRequest = {
         nanoId: nanoId,
         amount: numToMint,
         creator: owner,
-        reference: reference
+        nearReference: reference
       }
+
       return new Promise((resolve, reject) => {
         anonApiCall.post("/product/near/mint", req)
         .then(({ data, status }) => {

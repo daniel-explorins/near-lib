@@ -13,6 +13,13 @@ export interface tokensByOwnerQueryResponse {
     token_id: string,
   }
 
+export interface BackendMintTokenRequest {
+    nanoId: string,
+    amount: number,
+    creator: string,
+    nearReference: string
+  }
+
 export type ReferenceObject = any & {
   title?: string;
   description?: string;
