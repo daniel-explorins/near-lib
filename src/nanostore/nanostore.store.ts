@@ -87,13 +87,14 @@ export class Nanostore {
    * ------------------------------------------------------------------------------------
    * @returns 
    */
-  public async getAccountTokens(account: ConnectedWalletAccount) {
+  public async getAccountTokens(account: ConnectedWalletAccount, offset = 0, limit = 1000) {
 
     // const account = this.activeWalletConnection?.account();
     if(!account) throw new Error('No account defined');
     const accountId = account.accountId;
 
-    return await this.nanostoreGraphql.getTokensFromOwner(accountId);
+    // TODO 
+    return await this.nanostoreGraphql.getTokensFromOwner(accountId, offset, limit);
 
   }
 

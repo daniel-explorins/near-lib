@@ -146,7 +146,6 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
     }
   }
 
-  // @TODO move to another object
   export async function executeMultipleTransactions({
     transactions,
     walletConnection,
@@ -190,8 +189,6 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
       )
   }
 
-
-  // @TODO move to another object
   export async function generateTransaction({
     receiverId,
     actions,

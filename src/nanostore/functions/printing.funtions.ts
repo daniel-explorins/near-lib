@@ -11,8 +11,8 @@ const nanoStoreBackend = new NanostoreBackend();
    * @param token_id 
    * @param printing_fee 
    */
-export async function depositToPrint(
-    token_id: number, 
+export async function printToken(
+    token_id: string, 
     printing_fee: number,
     printerId: string,
     account?: ConnectedWalletAccount,
@@ -23,7 +23,7 @@ export async function depositToPrint(
 	if (!account || !accountId) throw new Error('Undefined account');
 
     await nanoStoreBackend.registerDepositToPrint(
-        token_id.toString(),
+        token_id,
         printing_fee.toString(),
         accountId,
         printerId
@@ -35,21 +35,35 @@ export async function depositToPrint(
 
     const amount_bn = toBN(amount);
 
-    // @TODO Falta verificacion en frontend (Esto será en otro metodo despues del sendmoney)
-    
-    await nanoStoreBackend.registerDepositPayedToPrint(token_id.toString());
-
-    // Esto será un paso posterior
-    this.callToPrint(token_id.toString());
-
     const transfer = await account.sendMoney(
         NANOSTORE_CONTRACT_NAME,
         amount_bn
     );
 
+  }
+
+  // TODO here we should check if the payment was done
+export async function confirmPrint(token_id: string) {
+
+    // TODO: confirmation on backend
+    // TODO: change type any
+    const confirmation: any = await nanoStoreBackend.registerDepositPayedToPrint(token_id.toString());
+
+    if(!confirmation) throw new Error('Error confirming print');
+    // console.log('transfer: ', transfer)
+    
+    // TODO remove this
+    // return 
+    // Esto será un paso posterior
+    await callToPrint(token_id);
+
     // Falta registrar el payment-done
         // Creamos el print-event en el backend
-}
+
+  }
+    // @TODO Falta verificacion en frontend (Esto será en otro metodo despues del sendmoney)
+    
+    
 
 export async function callToPrint(
     tokenId: string

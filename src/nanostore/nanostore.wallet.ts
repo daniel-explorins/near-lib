@@ -7,7 +7,7 @@ import { initializeExternalConstants } from "../utils/external-constants";
 import { KeyStore } from "near-api-js/lib/key_stores";
 import { purchaseToken } from "./functions/transactions.functions";
 import { deployStore } from "./functions/store-creation.functions";
-import { callToPrint } from "./functions/printing.funtions";
+import { printToken } from "./functions/printing.funtions";
 import { ReferenceObject } from "./interfaces";
 import { mintToken } from "./functions/minting.functions";
 
@@ -173,10 +173,13 @@ export class NanostoreWallet {
     await deployStore(symbol, account)
   }
 
-  public async callToPrint(
-    tokenId: string
+  public async printOwnedToken(
+    tokenId: string,
+    printerId: string,
+    printingFee: number,
   ) {
-    await callToPrint(tokenId)
+    const account = this._currentAccount$.value || undefined
+    return await printToken(tokenId, printingFee, printerId, account)
   }
 
   public async mintToken(
