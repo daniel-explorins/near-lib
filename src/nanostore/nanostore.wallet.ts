@@ -1,5 +1,5 @@
 import { connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletConnection } from "near-api-js";
-import { BehaviorSubject, map, shareReplay } from "rxjs";
+import { BehaviorSubject, filter, firstValueFrom, map, shareReplay } from "rxjs";
 import { CannotConnectError, CannotDisconnectError } from "../error";
 import { NearNetwork } from "../types";
 import { NANOSTORE_CONTRACT_NAME, NANOSTORE_TESTNET_CONFIG } from "./constants";
@@ -7,7 +7,7 @@ import { initializeExternalConstants } from "../utils/external-constants";
 import { KeyStore } from "near-api-js/lib/key_stores";
 import { purchaseToken } from "./functions/transactions.functions";
 import { deployStore } from "./functions/store-creation.functions";
-import { printToken } from "./functions/printing.funtions";
+import { callToPrint, confirmPrintToken, initPrintToken } from "./functions/printing.funtions";
 import { ReferenceObject } from "./interfaces";
 import { mintToken } from "./functions/minting.functions";
 
@@ -173,13 +173,22 @@ export class NanostoreWallet {
     await deployStore(symbol, account)
   }
 
-  public async printOwnedToken(
+  public async initPrintOwnedToken(
     tokenId: string,
+    nearReference: string,
+    productId: string,
     printerId: string,
     printingFee: number,
   ) {
     const account = this._currentAccount$.value || undefined
-    return await printToken(tokenId, printingFee, printerId, account)
+    return await initPrintToken(tokenId, nearReference, productId, printingFee, printerId, account)
+  }
+
+  public async confirmPrintOwnedToken(tokenId: string, transactionHashes: string, nearReference: string, productId: string){
+    
+    const account = await firstValueFrom(this._currentAccount$.pipe(filter(account => account !== null)))// .value || undefined
+    await confirmPrintToken(tokenId, nearReference, productId, transactionHashes, account!)
+    return await callToPrint(tokenId, nearReference, productId);
   }
 
   public async mintToken(

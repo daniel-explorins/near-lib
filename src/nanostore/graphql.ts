@@ -3,7 +3,7 @@ import request, { gql } from "graphql-request";
 import { CannotConnectError } from "./../error";
 import { NearNetwork } from "./../types";
 
-import { tokensByOwnerQuery, tokensGeneralQuery } from "../utils/graphQuery";
+import { tokensGeneralQuery } from "../utils/graphQuery";
 import { NANOSTORE_CONTRACT_NAME } from "./constants";
 import { tokensByOwnerQueryResponse } from "./interfaces";
 
@@ -35,6 +35,34 @@ export class NanostoreGraphql {
     }
 
     /**
+     * @description get token by reference id
+     * ---------------------------------------------------------------
+     * @param referenceId
+     * @returns
+     */
+    public async getTokenByReferenceId(referenceId: string): Promise<any> { 
+      const query = gql`{
+        mb_views_nft_tokens(
+          where: {
+            nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}
+            reference: {_eq: "${referenceId}"}
+          }
+        ) {
+          ${tokensGeneralQuery}
+        }
+      }
+    `;
+    
+      const response = await this.custom(
+        query
+      ) as any;
+      
+      console.log('response', response)
+      if(response && response.mb_views_nft_tokens) return response.mb_views_nft_tokens[0];
+      else throw new Error('My store cannot be accessed.')
+    }
+
+    /**
      * @description
      * ---------------------------------------------------------------
      * @param ownerId 
@@ -55,7 +83,7 @@ export class NanostoreGraphql {
         offset: ${offset}
         limit: ${limit}
       ) {
-        ${tokensByOwnerQuery}
+        ${tokensGeneralQuery}
       }
     }
   `;

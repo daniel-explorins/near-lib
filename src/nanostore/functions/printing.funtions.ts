@@ -11,8 +11,10 @@ const nanoStoreBackend = new NanostoreBackend();
    * @param token_id 
    * @param printing_fee 
    */
-export async function printToken(
-    token_id: string, 
+export async function initPrintToken(
+    token_id: string,
+    nearReference: string,
+    productId: string, 
     printing_fee: number,
     printerId: string,
     account?: ConnectedWalletAccount,
@@ -22,13 +24,22 @@ export async function printToken(
 
 	if (!account || !accountId) throw new Error('Undefined account');
 
-    await nanoStoreBackend.registerDepositToPrint(
+    try{
+      await nanoStoreBackend.registerDepositToPrint(
         token_id,
+        nearReference,
+        productId,
         printing_fee.toString(),
         accountId,
         printerId
-    )
+      )
 
+    } catch (error: any) {
+      console.log('Error registering print: ', error);
+      return error
+      // throw new Error('Error registering print: ' + error.message)
+    }
+    
     const amount = utils.format.parseNearAmount(printing_fee.toString());
 
     if(!amount) return;
@@ -43,19 +54,29 @@ export async function printToken(
   }
 
   // TODO here we should check if the payment was done
-export async function confirmPrint(token_id: string) {
+export async function confirmPrintToken(
+  token_id: string,
+  nearReference: string,
+  productId: string,
+  transactionHashes: string, 
+  account?: ConnectedWalletAccount
+  ) {
+  
+  const accountId = account?.accountId
+
+	if (!account || !accountId) throw new Error('Undefined account');
 
     // TODO: confirmation on backend
     // TODO: change type any
-    const confirmation: any = await nanoStoreBackend.registerDepositPayedToPrint(token_id.toString());
+    try {
+      await nanoStoreBackend.registerDepositPaidToPrint(token_id, nearReference, productId, accountId, transactionHashes);
+    } catch (error) {
 
-    if(!confirmation) throw new Error('Error confirming print');
-    // console.log('transfer: ', transfer)
-    
-    // TODO remove this
-    // return 
-    // Esto será un paso posterior
-    await callToPrint(token_id);
+      console.log('Error confirming print: ', error);
+      throw new Error('Error confirming print')
+    }
+
+    // await callToPrint(token_id);
 
     // Falta registrar el payment-done
         // Creamos el print-event en el backend
@@ -66,13 +87,15 @@ export async function confirmPrint(token_id: string) {
     
 
 export async function callToPrint(
-    tokenId: string
+    tokenId: string,
+    nearReference: string,
+    productId: string,
   ) {
     
     try {
-      await nanoStoreBackend.print(tokenId);
+      await nanoStoreBackend.print(tokenId, nearReference, productId);
     } catch (error) {
-      console.log('ha fallado el print: ', error);
+      console.log('print failed: ', error);
     }
     
   }

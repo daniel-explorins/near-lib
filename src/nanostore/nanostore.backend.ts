@@ -5,7 +5,7 @@ export class NanostoreBackend {
   /**
    * @TODO Llama al backend
    */
-  public payPrintedToken(file: File, metadataId: string, creator: string) {
+  /* public payPrintedToken(file: File, metadataId: string, creator: string) {
     const formData = new FormData();
     formData.append("file", file, 'nanoname');
     formData.append("metadataId", metadataId);
@@ -17,8 +17,8 @@ export class NanostoreBackend {
 				resolve(data);
 			})
 			.catch((error) => { reject(error) })
-	});
-  }
+	  });
+  } */
 
   /**
    * @description
@@ -71,11 +71,17 @@ export class NanostoreBackend {
   } */
 
   public async print(
-    tokenId: string
+    tokenId: string,
+    nearReference: string,
+    productId: string,
   ) {
-    const body = {tokenId, reference: 'fake'}
+    const body = {
+      tokenId, 
+      nearReference,
+      productId
+    }
     return new Promise((resolve, reject) => {
-		  anonApiCall.post("/print-event", body)
+		  anonApiCall.post("/print-event/print", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})
@@ -85,28 +91,48 @@ export class NanostoreBackend {
 
   public async registerDepositToPrint(
     tokenId: string,
+    nearReference: string,
+    productId: string,
     fee: string,
     owner: string,
     printerId: string
   ) {
-    // TODO: el printer está hardcoded
-    const body = {tokenId, printerId, fee, owner}
+    const body = {
+      tokenId,
+      nearReference,
+      productId,
+      printerId,
+      fee,
+      owner
+    }
     return new Promise((resolve, reject) => {
-		  anonApiCall.post("/print-event/deposit", body)
+		  anonApiCall.post("/print-event/register-deposit", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})
-			.catch((error) => { reject(error) })
-	});
+			.catch((error) => { 
+        reject(error) 
+      })
+	  });
   }
 
-  public async registerDepositPayedToPrint(
-    tokenId: string
+  public async registerDepositPaidToPrint(
+    tokenId: string,
+    nearReference: string,
+    productId: string,
+    owner: string,
+    transactionHashes: string
   ) {
     // TODO: el printer está hardcoded
-    const body = {tokenId}
+    const body = {
+      tokenId,
+      nearReference,
+      productId,
+      owner,
+      transactionHashes
+    }
     return new Promise((resolve, reject) => {
-		  anonApiCall.post("/print-event/deposit-payed", body)
+		  anonApiCall.post("/print-event/confirm-deposit", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})

@@ -73,6 +73,24 @@ export class Nanostore {
     }
 
     /**
+     * @description gets token by reference 
+     * ------------------------------------------------------------------------------------
+     * @param reference
+     * @throws {CannotGetTokenError}
+     * @returns {Promise<any>}
+     * 
+     * @example 
+     */
+    public async getTokenByReference(reference: string): Promise<any> {
+      if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
+      try {
+          return await this.nanostoreGraphql.getTokenByReferenceId(reference);
+      } catch ($e) {
+          throw new Error('Graphql error.');
+      }
+    }
+
+    /**
      * @description
      * ------------------------------------------------------------------------------------
      */
