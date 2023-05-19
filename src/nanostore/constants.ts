@@ -1,19 +1,13 @@
 import { MintMetadata } from "mintbase";
 
-// TODO get this data from env frontend or backend
-
-export const NANOSTORE_CONTRACT_NAME = 'storepruebas4.nanostore.testnet'; // 'nanostore_store.dev-1675363616907-84002391197707'
-
-export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
-
 export const NANOSTORE_BACKEND_URL = 'https://nano-backend.eu.ngrok.io';
 
 export const APP_KEY_PREFIX = 'Nanostore';
 
-export const NANOSTORE_TESTNET_CONFIG = {
+export const NANOSTORE_TESTNET_CONFIG: ConfigData = {
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",
-  contractName: NANOSTORE_CONTRACT_NAME,
+  // contractName: NANOSTORE_CONTRACT_NAME,
   walletUrl: "https://wallet.testnet.near.org",
   helperUrl: "https://helper.testnet.near.org",
   explorerUrl: "https://explorer.testnet.near.org",
@@ -22,10 +16,10 @@ export const NANOSTORE_TESTNET_CONFIG = {
   },
 };
 
-export const NANOSTORE_MAINNET_CONFIG = {
+export const NANOSTORE_MAINNET_CONFIG: ConfigData = {
   networkId: "mainnet",
   nodeUrl: "https://rpc.mainnet.near.org",
-  contractName: NANOSTORE_CONTRACT_NAME,
+  // contractName: NANOSTORE_CONTRACT_NAME,
   walletUrl: "https://wallet.mainnet.near.org",
   helperUrl: "https://helper.mainnet.near.org",
   explorerUrl: "https://explorer.mainnet.near.org",
@@ -60,6 +54,17 @@ export enum MetadataField {
     Royalty = 'royalty',
     Royalty_perc = 'royalty_perc',
     SplitRevenue = 'split_revenue',
+  }
+
+  export interface ConfigData {
+    networkId: string
+    nodeUrl: string
+    walletUrl: string
+    helperUrl: string
+    explorerUrl: string
+    headers: {
+      "Content-Type": "application/json",
+    }
   }
 
   export enum MetadataFieldExtension {

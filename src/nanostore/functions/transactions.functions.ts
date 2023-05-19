@@ -1,7 +1,6 @@
 import { cannotMakeOfferError } from "./../../error/cannotMakeOfferError";
 import { MARKETPLACE_HOST_NEAR_ACCOUNT, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "./../../mintbase/constants";
 import { connect as nearConnect, ConnectedWalletAccount, Contract, Near, utils, WalletConnection } from "near-api-js";
-import { NANOSTORE_CONTRACT_NAME } from "../constants";
 import { MAX_GAS } from "./../../constants";
 import { NearTransaction, OptionalMethodArgs } from "./../../types";
 import { JsonToUint8Array, calculateListCost, toBN } from "./../../utils/helpers";
@@ -16,9 +15,14 @@ const elliptic = require("elliptic").ec;
    * ------------------------------------------------------------------------------------
    * @param token_id
    * @param price
+   * @param contractId
    * @param account
 */
-export async function purchaseToken(token_id: string, price: string, account?: ConnectedWalletAccount) {
+export async function purchaseToken(
+  token_id: string, 
+  price: string, 
+  contractId: string,
+  account?: ConnectedWalletAccount) {
 
     const accountId = account?.accountId
     const gas = MAX_GAS;
@@ -42,7 +46,7 @@ export async function purchaseToken(token_id: string, price: string, account?: C
         await contract.buy({
             args: {
               // TODO: open for other token
-              nft_contract_id: NANOSTORE_CONTRACT_NAME, //  'nanostore_store.dev-1675363616907-84002391197707',
+              nft_contract_id: contractId, //  'nanostore_store.dev-1675363616907-84002391197707',
               token_id
             },
             gas,
@@ -59,6 +63,9 @@ export async function purchaseToken(token_id: string, price: string, account?: C
    * ------------------------------------------------------------------------------------
    * @param tokenId 
    * @param price 
+   * @param walletConnection
+   * @param nearConnection
+   * @param contractId
    */
   export async function deposit_and_set_price(
     tokenId: string,
@@ -66,6 +73,7 @@ export async function purchaseToken(token_id: string, price: string, account?: C
       // account: ConnectedWalletAccount,
     walletConnection: WalletConnection,
     nearConnection: Near,
+    contractId: string,
   ) {
     const priceInNear = utils.format.parseNearAmount(price.toString());
     console.log('priceInNear: ', priceInNear);
@@ -131,7 +139,7 @@ export async function purchaseToken(token_id: string, price: string, account?: C
           }
         ],
         signerId: "",
-        receiverId: NANOSTORE_CONTRACT_NAME,
+        receiverId: contractId,
         publicKey: publicKeys,
         actions: [],
         nonce: toBN(0),

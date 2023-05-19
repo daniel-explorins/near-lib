@@ -17,7 +17,8 @@ export class Nanostore {
    */
      public constructor(
         // private apiKey: string,
-        public networkName: NearNetwork
+        public networkName: NearNetwork,
+        public contractId: string
       ) {
         // MintbaseWallet is required for use this library
         // First of all we set mintbaseWalletConfig
@@ -31,7 +32,7 @@ export class Nanostore {
           default:
             throw CannotConnectError.becauseUnsupportedNetwork();
         }
-        this.nanostoreGraphql = new NanostoreGraphql(networkName);
+        this.nanostoreGraphql = new NanostoreGraphql(networkName, contractId);
       }
 
       

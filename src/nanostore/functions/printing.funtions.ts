@@ -1,4 +1,3 @@
-import { NANOSTORE_CONTRACT_NAME } from "../constants";
 import { connect as nearConnect, ConnectedWalletAccount, utils } from "near-api-js";
 import { toBN } from "./../../utils/helpers";
 import { NanostoreBackend } from "../nanostore.backend";
@@ -17,6 +16,7 @@ export async function initPrintToken(
     productId: string, 
     printing_fee: number,
     printerId: string,
+    contractId: string,
     account?: ConnectedWalletAccount,
   ) {
     // const account = this.activeWalletConnection?.account()
@@ -46,8 +46,8 @@ export async function initPrintToken(
     const amount_bn = toBN(amount);
 
     const transfer = await account.sendMoney(
-        NANOSTORE_CONTRACT_NAME,
-        amount_bn
+      contractId,
+      amount_bn
     );
 
   }

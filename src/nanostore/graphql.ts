@@ -4,7 +4,6 @@ import { CannotConnectError } from "./../error";
 import { NearNetwork } from "./../types";
 
 import { tokensGeneralQuery, tokensListedQuery } from "../utils/graphQuery";
-import { NANOSTORE_CONTRACT_NAME } from "./constants";
 import { tokensByOwnerQueryResponse } from "./interfaces";
 
 export class NanostoreGraphql {
@@ -15,11 +14,13 @@ export class NanostoreGraphql {
    * @description The constructor only sets one variables: networkName
    * ------------------------------------------------------------------------------------
    * @param {NearNetwork} networkName 
+   * @param {string} contractId 
    * @throws {CannotConnectError} if network is unrecognized
    */
   
     constructor(
       private networkName: NearNetwork,
+      public contractId: string
     ) {
       switch (networkName) {
         case NearNetwork.mainnet:
@@ -44,7 +45,7 @@ export class NanostoreGraphql {
       const query = gql`{
         mb_views_nft_tokens(
           where: {
-            nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}
+            nft_contract_id: {_eq: "${this.contractId}"}
             reference: {_eq: "${referenceId}"}
           }
         ) {
@@ -75,7 +76,7 @@ export class NanostoreGraphql {
     const query = gql`{
       mb_views_nft_tokens(
         where: {
-          nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}
+          nft_contract_id: {_eq: "${this.contractId}"}
           owner: {_eq: "${ownerId}"}
         }
         offset: ${offset}
@@ -110,7 +111,7 @@ export class NanostoreGraphql {
     
     const query = gql`{
       mb_views_active_listings(
-        where: {nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}}
+        where: {nft_contract_id: {_eq: "${this.contractId}"}}
         offset: ${offset}
         limit: ${limit}
       ) {
@@ -145,7 +146,7 @@ export class NanostoreGraphql {
     // TODO filter on sale tokens only
     const query = gql`{
       mb_views_nft_tokens(
-        where: {nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}}
+        where: {nft_contract_id: {_eq: "${this.contractId}"}}
         offset: ${offset}
         limit: ${limit}
       ) {

@@ -2,7 +2,10 @@ import { connect as nearConnect, ConnectedWalletAccount, keyStores, Near, utils,
 import { BehaviorSubject, filter, firstValueFrom, map, shareReplay } from "rxjs";
 import { CannotConnectError, CannotDisconnectError } from "../error";
 import { NearNetwork } from "../types";
-import { APP_KEY_PREFIX, NANOSTORE_CONTRACT_NAME, NANOSTORE_TESTNET_CONFIG } from "./constants";
+import { APP_KEY_PREFIX, 
+  ConfigData, 
+  NANOSTORE_MAINNET_CONFIG, 
+  NANOSTORE_TESTNET_CONFIG } from "./constants";
 import { initializeExternalConstants } from "../utils/external-constants";
 import { KeyStore } from "near-api-js/lib/key_stores";
 import { deposit_and_set_price, purchaseToken } from "./functions/transactions.functions";
@@ -36,6 +39,7 @@ export class NanostoreWallet {
   private activeNearConnection?: Near;
   private constants?: any;
   private keyStore?: KeyStore;
+  private configData?: ConfigData
 
   
   /**
@@ -48,16 +52,17 @@ export class NanostoreWallet {
    */
   public constructor(
     private apiKey: string,
-    public networkName: NearNetwork
+    public networkName: NearNetwork,
+    private contractId: string
   ) {
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
     switch (networkName) {
       case NearNetwork.mainnet:
-          
+        this.configData = NANOSTORE_TESTNET_CONFIG
         break;
       case NearNetwork.testnet:
-          
+        this.configData = NANOSTORE_MAINNET_CONFIG
         break;
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
@@ -99,7 +104,7 @@ export class NanostoreWallet {
       console.log('logging.......');
       // https://docs.near.org/tools/near-api-js/wallet
       const signIn = await this.activeWalletConnection?.requestSignIn({
-        contractId: NANOSTORE_CONTRACT_NAME,
+        contractId: this.contractId,
         successUrl: '',
         failureUrl: '',
       });
@@ -127,12 +132,17 @@ export class NanostoreWallet {
       console.log('already initialized');
       return;
     }
+
+    if(!this.configData) {
+      console.log('no config data');
+      return;
+    }
     // TODO: get env from backend
     const keyStore = new keyStores.BrowserLocalStorageKeyStore();
     this.keyStore = keyStore;
     const _connectionObject = {
       deps: { keyStore },
-      ...NANOSTORE_TESTNET_CONFIG
+      ...this.configData!
     }
 
     // If the wallet is not connected, we go to the connection page
@@ -182,13 +192,13 @@ export class NanostoreWallet {
     const nearConnection = this.activeNearConnection
     
     if(!walletConnection || !nearConnection) throw CannotConnectError.becauseMintbaseLoginFail()
-    return await deposit_and_set_price(token_id, price, walletConnection, nearConnection)
+    return await deposit_and_set_price(token_id, price, walletConnection, nearConnection, this.contractId)
   }  
 
   // TODO: open for token on other contract??
   public purchaseToken(token_id: string, price: string) {
     const account = this._currentAccount$.value || undefined
-    purchaseToken(token_id, price, account)
+    purchaseToken(token_id, price, this.contractId, account)
   }
 
   /**
@@ -206,9 +216,10 @@ export class NanostoreWallet {
     productId: string,
     printerId: string,
     printingFee: number,
+    // contractId: string
   ) {
     const account = this._currentAccount$.value || undefined
-    return await initPrintToken(tokenId, nearReference, productId, printingFee, printerId, account)
+    return await initPrintToken(tokenId, nearReference, productId, printingFee, printerId, this.contractId, account)
   }
 
   public async confirmPrintOwnedToken(tokenId: string, transactionHashes: string, nearReference: string, productId: string){
