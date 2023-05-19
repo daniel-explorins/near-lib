@@ -56,8 +56,6 @@ export class NanostoreGraphql {
       const response = await this.custom(
         query
       ) as any;
-      
-      console.log('response', response)
       if(response && response.mb_views_nft_tokens) return response.mb_views_nft_tokens[0];
       else throw new Error('My store cannot be accessed.')
     }
@@ -98,11 +96,13 @@ export class NanostoreGraphql {
   }
 
   /**
-   * @description
-   * ---------------------------------------------------------------
-   * @returns 
-   * @throws Custom Error if cannot get data
-   */
+  * @description custom graphql request
+  * ---------------------------------------------------------------
+  * @param offset
+  * @param limit
+  * @returns 
+  * @throws Custom Error if cannot get data
+  */
   public async getAllStoreActiveListingsTokens(
     offset: number,
     limit: number
@@ -132,6 +132,8 @@ export class NanostoreGraphql {
   /**
    * @description
    * ---------------------------------------------------------------
+   * @param offset
+   * @param limit
    * @returns 
    * @throws Custom Error if cannot get data
    */
@@ -162,7 +164,8 @@ export class NanostoreGraphql {
   }
 
   /**
-   * Makes custom GraphQL query
+   * @description Makes custom GraphQL query
+   * ---------------------------------------------------------------
    * @param query custom GraphQL query
    * @param variables object with variables passed to the query
    * @returns result of query

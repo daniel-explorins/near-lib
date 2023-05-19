@@ -8,6 +8,8 @@ export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
 
 export const NANOSTORE_BACKEND_URL = 'https://nano-backend.eu.ngrok.io';
 
+export const APP_KEY_PREFIX = 'Nanostore';
+
 export const NANOSTORE_TESTNET_CONFIG = {
   networkId: "testnet",
   nodeUrl: "https://rpc.testnet.near.org",

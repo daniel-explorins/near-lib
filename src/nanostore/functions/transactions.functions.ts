@@ -3,10 +3,8 @@ import { MARKETPLACE_HOST_NEAR_ACCOUNT, MINTBASE_MARKET_CONTRACT_CALL_METHODS, M
 import { connect as nearConnect, ConnectedWalletAccount, Contract, Near, utils, WalletConnection } from "near-api-js";
 import { NANOSTORE_CONTRACT_NAME } from "../constants";
 import { MAX_GAS } from "./../../constants";
-import { JsonToUint8Array } from "./../../utils/near";
 import { NearTransaction, OptionalMethodArgs } from "./../../types";
-import { toBN } from "./../../utils/helpers";
-import * as nearUtils from '../../utils/near';
+import { JsonToUint8Array, calculateListCost, toBN } from "./../../utils/helpers";
 import { Action, createTransaction, functionCall } from "near-api-js/lib/transaction";
 import { base_decode } from "near-api-js/lib/utils/serialize";
 import { PublicKey } from "near-api-js/lib/utils"; 
@@ -14,9 +12,12 @@ import { PublicKey } from "near-api-js/lib/utils";
 const elliptic = require("elliptic").ec;
 
 /**
-   * @description
+   * @description Purchase a token
    * ------------------------------------------------------------------------------------
-   */
+   * @param token_id
+   * @param price
+   * @param account
+*/
 export async function purchaseToken(token_id: string, price: string, account?: ConnectedWalletAccount) {
 
     const accountId = account?.accountId
@@ -54,7 +55,7 @@ export async function purchaseToken(token_id: string, price: string, account?: C
   }
 
   /**
-   * @TODO Revisar a fondo
+   * @description List a token for sale
    * ------------------------------------------------------------------------------------
    * @param tokenId 
    * @param price 
@@ -85,7 +86,7 @@ export async function purchaseToken(token_id: string, price: string, account?: C
     const args2_base64 = JsonToUint8Array(args2);
 
     const market_cost = 0.02;
-    const listCost = nearUtils.calculateListCost(1);
+    const listCost = calculateListCost(1);
     const deposit = utils.format.parseNearAmount(listCost.toString()) ?? '0';
     const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
     let publicKeys;
@@ -145,6 +146,14 @@ export async function purchaseToken(token_id: string, price: string, account?: C
     }
   }
 
+  /**
+   * @description Execute multiple transactions
+   * ------------------------------------------------------------------------------------
+   * @param transactions
+   * @param walletConnection
+   * @param nearConnection
+   * @param options
+  */
   export async function executeMultipleTransactions({
     transactions,
     walletConnection,
@@ -178,7 +187,12 @@ export async function purchaseToken(token_id: string, price: string, account?: C
     })
   }
 
-  
+  /**
+   * @description Get local key
+   * @param nearConnection 
+   * @param account 
+   * @returns 
+   */
   async function getLocalKey(nearConnection: Near, account: ConnectedWalletAccount) {
     return await nearConnection.connection.signer.getPublicKey(
         account.accountId,
@@ -186,6 +200,14 @@ export async function purchaseToken(token_id: string, price: string, account?: C
       )
   }
 
+  /**
+   * @description Generate transaction
+   * @param receiverId
+   * @param actions
+   * @param nonceOffset
+   * @param nearConnection
+   * @param walletConnection
+   */
   export async function generateTransaction({
     receiverId,
     actions,

@@ -1,27 +1,10 @@
-import { anonApiCall, uploadFileCall } from "./api";
+import { anonApiCall } from "./api";
 import { BackendMintTokenRequest } from "./interfaces";
 
-export class NanostoreBackend {   
-  /**
-   * @TODO Llama al backend
-   */
-  /* public payPrintedToken(file: File, metadataId: string, creator: string) {
-    const formData = new FormData();
-    formData.append("file", file, 'nanoname');
-    formData.append("metadataId", metadataId);
-    formData.append("creator", metadataId);
-
-    return new Promise((resolve, reject) => {
-		uploadFileCall.post("/near-product", formData)
-			.then(({ data, status }) => {
-				resolve(data);
-			})
-			.catch((error) => { reject(error) })
-	  });
-  } */
+export class NanostoreBackend {
 
   /**
-   * @description
+   * @description Mint an nft that could be 3d printed
    * ------------------------------------------------
    * @param stlFile 
    * @param numToMint 
@@ -46,30 +29,19 @@ export class NanostoreBackend {
       return new Promise((resolve, reject) => {
         anonApiCall.post("/product/near/mint", req)
         .then(({ data, status }) => {
-          console.log('data ', data)
           resolve(data);
         })
         .catch((error) => { reject(error) })
     });
   }
 
-  /* private getMintFormData(
-    // stlFile: File,
-    numToMint: number,
-    owner: string,
-    reference: string,
-    // fileName: string
-  ) {
-    const formData = new FormData();
-    // formData.append("file", stlFile, fileName);
-    formData.append("amount", numToMint.toString());
-    formData.append("owner", owner);
-    formData.append("reference", reference);
-    // formData.append("originalName", fileName);
-
-    return formData;
-  } */
-
+  /**
+   * @description Print an nft
+   * ------------------------
+   * @param tokenId
+   * @param nearReference
+   * @param productId
+  */
   public async print(
     tokenId: string,
     nearReference: string,
@@ -89,6 +61,16 @@ export class NanostoreBackend {
 	});
   }
 
+  /**
+   * @description Register a new new print deposit
+   * @param tokenId 
+   * @param nearReference 
+   * @param productId 
+   * @param fee 
+   * @param owner 
+   * @param printerId 
+   * @returns 
+   */
   public async registerDepositToPrint(
     tokenId: string,
     nearReference: string,
@@ -116,6 +98,16 @@ export class NanostoreBackend {
 	  });
   }
 
+  /** 
+   * @description register a deposit paid to print
+   * ---------------------------------------------
+   * @param tokenId
+   * @param nearReference
+   * @param productId
+   * @param owner
+   * @param transactionHashes
+   * @returns 
+  */
   public async registerDepositPaidToPrint(
     tokenId: string,
     nearReference: string,

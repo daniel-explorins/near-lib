@@ -46,7 +46,6 @@ export async function deployStore(
     }
 
     const attachedDeposit = DEPLOY_STORE_COST
-      //: new BN(options?.attachedDeposit)
 
     // @ts-ignore: method does not exist on Contract type
     await contract.create_store({

@@ -37,7 +37,6 @@ export async function initPrintToken(
     } catch (error: any) {
       console.log('Error registering print: ', error);
       return error
-      // throw new Error('Error registering print: ' + error.message)
     }
     
     const amount = utils.format.parseNearAmount(printing_fee.toString());
@@ -53,6 +52,14 @@ export async function initPrintToken(
 
   }
 
+/**
+ * @description confirm print token
+ * @param token_id 
+ * @param nearReference 
+ * @param productId 
+ * @param transactionHashes 
+ * @param account 
+ */
   // TODO here we should check if the payment was done
 export async function confirmPrintToken(
   token_id: string,
@@ -76,16 +83,16 @@ export async function confirmPrintToken(
       throw new Error('Error confirming print')
     }
 
-    // await callToPrint(token_id);
-
-    // Falta registrar el payment-done
-        // Creamos el print-event en el backend
-
   }
-    // @TODO Falta verificacion en frontend (Esto será en otro metodo despues del sendmoney)
-    
-    
 
+  /**
+   * @description call nft_print on contract
+   * -----------<s---------------------------------------------------
+   * @param token_id
+   * @param nearReference
+   * @param productId
+   * @param account
+    */
 export async function callToPrint(
     tokenId: string,
     nearReference: string,
@@ -97,5 +104,4 @@ export async function callToPrint(
     } catch (error) {
       console.log('print failed: ', error);
     }
-    
   }

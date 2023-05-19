@@ -76,24 +76,10 @@ limit: number = 10
     ): Promise<any>
     {
       if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
-      /* New mintbase lib example
-
-      const {data , error} = await fetchGraphQl({
-        query: QUERIES.storeNftsQuery,
-        variables: {
-          condition: {
-            nft_contract_id: { _in: NANOSTORE_CONTRACT_NAME }
-          },
-          limit: 12,
-          offset: 0,
-        },
-        network: 'testnet'
-      });
-      */
       try {
-        // TODO: filter on sale tokens only
         return await this.nanostoreGraphql.getAllStoreTokens(offset,limit);
-      } catch ($e) {
+      } catch (e) {
+        console.log(e);
         throw new Error('Graphql error.');
       }
       
@@ -137,8 +123,6 @@ limit: number = 10
     // const account = this.activeWalletConnection?.account();
     if(!account) throw new Error('No account defined');
     const accountId = account.accountId;
-
-    // TODO 
     return await this.nanostoreGraphql.getTokensFromOwner(accountId, offset, limit);
 
   }

@@ -2,7 +2,7 @@ import { connect as nearConnect, ConnectedWalletAccount, keyStores, Near, utils,
 import { BehaviorSubject, filter, firstValueFrom, map, shareReplay } from "rxjs";
 import { CannotConnectError, CannotDisconnectError } from "../error";
 import { NearNetwork } from "../types";
-import { NANOSTORE_CONTRACT_NAME, NANOSTORE_TESTNET_CONFIG } from "./constants";
+import { APP_KEY_PREFIX, NANOSTORE_CONTRACT_NAME, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import { initializeExternalConstants } from "../utils/external-constants";
 import { KeyStore } from "near-api-js/lib/key_stores";
 import { deposit_and_set_price, purchaseToken } from "./functions/transactions.functions";
@@ -63,8 +63,6 @@ export class NanostoreWallet {
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
     this.init()
-
-
   }
 
   /**
@@ -138,17 +136,15 @@ export class NanostoreWallet {
     }
 
     // If the wallet is not connected, we go to the connection page
-    
     const near = await nearConnect(_connectionObject);
 
     this.activeNearConnection = near;
-    this.activeWalletConnection = new WalletConnection(near, 'Nanostore');
+    this.activeWalletConnection = new WalletConnection(near, APP_KEY_PREFIX);
     if(this.activeWalletConnection.isSignedIn()) {
         const account = this.activeWalletConnection.account();
         this._currentAccount$.next(account);
 
         const details = await this.getActiveAccountDetails();
-        console.log('account details : ', details);
     
     } else {
       this._currentAccount$.next(null);
@@ -160,13 +156,18 @@ export class NanostoreWallet {
     }
   }
 
-
   // TODO: only for admin
   public async deployStore(symbol: string) {
     const account = this._currentAccount$.value || undefined
     await deployStore(symbol, account)
   }
 
+  /**
+   * @description mint a token
+   * @param numToMint 
+   * @param referenceObject 
+   * @returns 
+   */
   public async mintToken(
     numToMint: number,
     referenceObject: ReferenceObject
@@ -190,6 +191,15 @@ export class NanostoreWallet {
     purchaseToken(token_id, price, account)
   }
 
+  /**
+   * @description initialize print of owned token
+   * @param tokenId 
+   * @param nearReference 
+   * @param productId 
+   * @param printerId 
+   * @param printingFee 
+   * @returns 
+   */
   public async initPrintOwnedToken(
     tokenId: string,
     nearReference: string,
@@ -209,6 +219,12 @@ export class NanostoreWallet {
   }
 
 
+  /**
+   * @description Get active account details
+   * ------------------------------------------------------------------------------------
+   * @throws {CannotConnectError} if mintbase signout method fails
+   * @returns 
+   */
   public async getActiveAccountDetails(): Promise<any> {
     const account = this._currentAccount$.value
     const accountId = account?.accountId
