@@ -34,7 +34,34 @@ export class Nanostore {
         this.nanostoreGraphql = new NanostoreGraphql(networkName);
       }
 
-      /**
+      
+  /**
+   * TODO: check retryFetch logic
+   * TODO: type token returned
+   * @description Returns all the tokens minted with nanostore contract
+   * ------------------------------------------------------------------------------------
+   * @param offset
+   * @param limit
+   * @throws {CannotGetTokenError}
+   */
+  public async getAllStoreActiveListingsTokens( 
+    offset: number = 0, 
+limit: number = 10
+): Promise<any>
+{
+  if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
+  
+  try {
+    // TODO: filter on sale tokens only
+    return await this.nanostoreGraphql.getAllStoreActiveListingsTokens(offset,limit);
+  } catch (e) {
+    console.log(e);
+    throw new Error('Graphql error.' + e);
+  }
+  
+}
+
+  /**
    * TODO: check retryFetch logic
    * TODO: type token returned
    * @description Returns all the tokens minted with nanostore contract

@@ -6,7 +6,7 @@ export const NANOSTORE_CONTRACT_NAME = 'storepruebas4.nanostore.testnet'; // 'na
 
 export const NANOSTORE_CONTRACT_OWNER = "nanostore.testnet";
 
-export const NANOSTORE_BACKEND_URL = 'http://127.0.0.1:3000';
+export const NANOSTORE_BACKEND_URL = 'https://nano-backend.eu.ngrok.io';
 
 export const NANOSTORE_TESTNET_CONFIG = {
   networkId: "testnet",

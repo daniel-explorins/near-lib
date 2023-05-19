@@ -17,7 +17,7 @@ const elliptic = require("elliptic").ec;
    * @description
    * ------------------------------------------------------------------------------------
    */
-export async function purchaseToken(token_id: string, account?: ConnectedWalletAccount) {
+export async function purchaseToken(token_id: string, price: string, account?: ConnectedWalletAccount) {
 
     const accountId = account?.accountId
     const gas = MAX_GAS;
@@ -36,8 +36,7 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
       }
     )
     try {
-
-      const amount = utils.format.parseNearAmount('1')
+      const amount = utils.format.parseNearAmount(price)
         // @ts-ignore: method does not exist on Contract type
         await contract.buy({
             args: {
@@ -61,11 +60,11 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
    * @param price 
    */
   export async function deposit_and_set_price(
-    tokenId: number,
+    tokenId: string,
 	  price: number,
       // account: ConnectedWalletAccount,
-      walletConnection: WalletConnection,
-      nearConnection: Near,
+    walletConnection: WalletConnection,
+    nearConnection: Near,
   ) {
     const priceInNear = utils.format.parseNearAmount(price.toString());
     console.log('priceInNear: ', priceInNear);
@@ -74,7 +73,7 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
     const args = {};
     const args2 = {
       autotransfer: true,
-      token_id: tokenId.toString(),
+      token_id: tokenId,
       account_id:MARKETPLACE_HOST_NEAR_ACCOUNT,
       msg: JSON.stringify({
         price: priceInNear.toString(),
@@ -142,7 +141,7 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
     try {
       await executeMultipleTransactions({transactions, walletConnection, nearConnection});
     } catch (error) {
-      console.log(' ****************  error: ', error);
+      console.log('error Listing: ', error);
     }
   }
 
@@ -158,8 +157,6 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
     options?: OptionalMethodArgs
   }): Promise<void> {
 
-    const account = walletConnection.account();
-
     const nearTransactions = await Promise.all(
       transactions.map(async (tx, i) => {
         return await generateTransaction({
@@ -169,7 +166,7 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
           }),
           nonceOffset: i + 1,
           nearConnection,
-          account,
+          walletConnection,
         })
       })
     )
@@ -194,24 +191,24 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
     actions,
     nonceOffset,
     nearConnection,
-    account
+    walletConnection
   }: {
     receiverId: any
     actions: Action[]
     nonceOffset: number,
     nearConnection: Near, 
-    account: ConnectedWalletAccount
+    walletConnection: WalletConnection
   }) {
-    if (!nearConnection || !account
+    if (!nearConnection || !walletConnection
         ) {
       throw new Error(`No active wallet or NEAR connection.`)
     }
 
-    const localKey = getLocalKey(nearConnection, account)
+    const account = walletConnection.account()
+
+    const localKey = await getLocalKey(nearConnection, account)
       
-    const accessKey = await this.activeWalletConnection
-      ?.account()
-      .accessKeyForTransaction(receiverId, actions, localKey)
+    const accessKey = await account.accessKeyForTransaction(receiverId, actions, localKey)
 
     if (!accessKey) {
       throw new Error(
@@ -219,7 +216,7 @@ export async function purchaseToken(token_id: string, account?: ConnectedWalletA
       )
     }
 
-    const block = await this.activeNearConnection?.connection.provider.block({
+    const block = await nearConnection?.connection.provider.block({
       finality: 'final',
     })
 

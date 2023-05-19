@@ -3,7 +3,7 @@ import request, { gql } from "graphql-request";
 import { CannotConnectError } from "./../error";
 import { NearNetwork } from "./../types";
 
-import { tokensGeneralQuery } from "../utils/graphQuery";
+import { tokensGeneralQuery, tokensListedQuery } from "../utils/graphQuery";
 import { NANOSTORE_CONTRACT_NAME } from "./constants";
 import { tokensByOwnerQueryResponse } from "./interfaces";
 
@@ -96,6 +96,38 @@ export class NanostoreGraphql {
     // @TODO custom graphql errors
     else throw new Error('My store cannot be accessed.')
   }
+
+  /**
+   * @description
+   * ---------------------------------------------------------------
+   * @returns 
+   * @throws Custom Error if cannot get data
+   */
+  public async getAllStoreActiveListingsTokens(
+    offset: number,
+    limit: number
+  ): Promise<any[]> {
+    
+    const query = gql`{
+      mb_views_active_listings(
+        where: {nft_contract_id: {_eq: "${NANOSTORE_CONTRACT_NAME}"}}
+        offset: ${offset}
+        limit: ${limit}
+      ) {
+        ${tokensListedQuery}
+      }
+    }
+  `;
+
+    const response = await this.custom(
+      query
+    ) as any;
+
+    if(response && response.mb_views_active_listings) return response.mb_views_active_listings;
+    else throw new Error('My store cannot be accessed.')
+  }
+
+
 
   /**
    * @description

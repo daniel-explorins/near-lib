@@ -1,11 +1,11 @@
-import { connect as nearConnect, ConnectedWalletAccount, Contract, keyStores, Near, utils, WalletConnection } from "near-api-js";
+import { connect as nearConnect, ConnectedWalletAccount, keyStores, Near, utils, WalletConnection } from "near-api-js";
 import { BehaviorSubject, filter, firstValueFrom, map, shareReplay } from "rxjs";
 import { CannotConnectError, CannotDisconnectError } from "../error";
 import { NearNetwork } from "../types";
 import { NANOSTORE_CONTRACT_NAME, NANOSTORE_TESTNET_CONFIG } from "./constants";
 import { initializeExternalConstants } from "../utils/external-constants";
 import { KeyStore } from "near-api-js/lib/key_stores";
-import { purchaseToken } from "./functions/transactions.functions";
+import { deposit_and_set_price, purchaseToken } from "./functions/transactions.functions";
 import { deployStore } from "./functions/store-creation.functions";
 import { callToPrint, confirmPrintToken, initPrintToken } from "./functions/printing.funtions";
 import { ReferenceObject } from "./interfaces";
@@ -68,7 +68,7 @@ export class NanostoreWallet {
   }
 
   /**
-   * @description
+   * @description check if wallet is connected
    * @returns 
    */
   public isConnected(): boolean {
@@ -98,7 +98,7 @@ export class NanostoreWallet {
     }
     
     try {
-      console.log('loggin !! .......');
+      console.log('logging.......');
       // https://docs.near.org/tools/near-api-js/wallet
       const signIn = await this.activeWalletConnection?.requestSignIn({
         contractId: NANOSTORE_CONTRACT_NAME,
@@ -143,34 +143,51 @@ export class NanostoreWallet {
 
     this.activeNearConnection = near;
     this.activeWalletConnection = new WalletConnection(near, 'Nanostore');
-    let initResponse;
-    try {
-      console.log('Init response --------------------------- : ', initResponse);
-    } catch (error) {
-        console.log('Init error: ', error);
-    }
-   
     if(this.activeWalletConnection.isSignedIn()) {
         const account = this.activeWalletConnection.account();
         this._currentAccount$.next(account);
-        
-        const walletDetails = await this.getActiveAccountDetails();
-        console.log('Connection Details ... ', walletDetails)
+
+        const details = await this.getActiveAccountDetails();
+        console.log('account details : ', details);
+    
     } else {
-        this._currentAccount$.next(null);
+      this._currentAccount$.next(null);
+      const isAsyncSignedIn = await this.activeWalletConnection?.isSignedInAsync()
+      if(isAsyncSignedIn) {
+        const account = this.activeWalletConnection.account();
+        this._currentAccount$.next(account);
+      }
     }
   }
 
-  // TODO: open for token on other contract??
-  public purchaseToken(token_id: string) {
-    const account = this._currentAccount$.value || undefined
-    purchaseToken(token_id, account)
-  }
 
   // TODO: only for admin
   public async deployStore(symbol: string) {
     const account = this._currentAccount$.value || undefined
     await deployStore(symbol, account)
+  }
+
+  public async mintToken(
+    numToMint: number,
+    referenceObject: ReferenceObject
+    ) {
+    const account = this._currentAccount$.value || undefined
+
+    return await mintToken(referenceObject, numToMint, account)
+  }
+
+  public async listTokenForSale(token_id: string, price: number) {
+    const walletConnection = this.activeWalletConnection
+    const nearConnection = this.activeNearConnection
+    
+    if(!walletConnection || !nearConnection) throw CannotConnectError.becauseMintbaseLoginFail()
+    return await deposit_and_set_price(token_id, price, walletConnection, nearConnection)
+  }  
+
+  // TODO: open for token on other contract??
+  public purchaseToken(token_id: string, price: string) {
+    const account = this._currentAccount$.value || undefined
+    purchaseToken(token_id, price, account)
   }
 
   public async initPrintOwnedToken(
@@ -191,19 +208,8 @@ export class NanostoreWallet {
     return await callToPrint(tokenId, nearReference, productId);
   }
 
-  public async mintToken(
-    numToMint: number,
-    referenceObject: ReferenceObject
-    ) {
-    const account = this._currentAccount$.value || undefined
 
-    return await mintToken(referenceObject, numToMint, account)
-  }
-
-
-
-  public async getActiveAccountDetails(): Promise<any>
-  {
+  public async getActiveAccountDetails(): Promise<any> {
     const account = this._currentAccount$.value
     const accountId = account?.accountId
     // @TODO throw error
@@ -215,24 +221,12 @@ export class NanostoreWallet {
     const publicKey = keyPair.getPublicKey().toString()
     const balance = await account.getAccountBalance()
 
-    // @TODO throw error
     if (!balance) return 
-
-    // @TODO ver que es esto
-    // const { data: accessKey } = await this.viewAccessKey(accountId, publicKey)
-
-    /*
-    const allowance = utils?.format?.formatNearAmount(
-      accessKey?.permission?.FunctionCall?.allowance ?? DEFAULT_ALLOWANCE
-    )
-    */
-
     const contractName = this.activeNearConnection?.config.contractName
 
     const data = {
       accountId: accountId,
       balance: utils.format.formatNearAmount(balance?.total, 2),
-      // allowance: allowance,
       contractName: contractName,
     }
     return data;
