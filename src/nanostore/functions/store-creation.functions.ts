@@ -4,7 +4,6 @@ import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_
 import { NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS } from "../constants";
 import { getStoreNameFromAccount } from "./../../utils/nanostore";
 
-
 /**
    * @description Creates a store. For future developments.
    * ------------------------------------------------------------------------------------
