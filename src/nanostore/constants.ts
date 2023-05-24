@@ -1,6 +1,6 @@
 import { MintMetadata } from "mintbase";
 
-export const NANOSTORE_BACKEND_URL = 'https://nano-backend.eu.ngrok.io';
+export const NANOSTORE_BACKEND_URL = 'https://6zjub3d524.execute-api.eu-west-1.amazonaws.com/dev';
 
 export const APP_KEY_PREFIX = 'Nanostore';
 

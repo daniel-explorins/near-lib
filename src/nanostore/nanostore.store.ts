@@ -24,7 +24,6 @@ export class Nanostore {
         // First of all we set mintbaseWalletConfig
         switch (networkName) {
           case NearNetwork.mainnet:
-              
             break;
           case NearNetwork.testnet:
               
