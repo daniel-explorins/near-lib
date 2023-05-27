@@ -57,12 +57,14 @@ export class NanostoreWallet {
   ) {
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
+
     switch (networkName) {
       case NearNetwork.mainnet:
-        this.configData = NANOSTORE_TESTNET_CONFIG
+        this.configData = NANOSTORE_MAINNET_CONFIG
         break;
       case NearNetwork.testnet:
-        this.configData = NANOSTORE_MAINNET_CONFIG
+        
+        this.configData = NANOSTORE_TESTNET_CONFIG
         break;
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
@@ -112,6 +114,7 @@ export class NanostoreWallet {
       const account = this.activeWalletConnection.account();
       this._currentAccount$.next(account);
     } catch (error) {
+      console.log('error: ', error);
       this._currentAccount$.next(null);
       throw CannotConnectError.becauseMintbaseLoginFail();
     }
