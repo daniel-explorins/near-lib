@@ -4,7 +4,8 @@ export default {
         MINTBASE_LOGIN: '0102',
         USUPPORTED_NETWORK: '0103',
         MINTBASE_NOT_CONNECTED: '0104',
-        MINTBASE_ERROR: '0105'
+        MINTBASE_ERROR: '0105',
+        NO_BACKEND_URL: '0106'
     },
     DISCONNECT: {
         MINTBASE_ERROR: '0201',

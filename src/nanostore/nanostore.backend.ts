@@ -1,9 +1,15 @@
+import { AxiosInstance } from "axios";
 import { anonApiCall } from "./api";
 import { BackendMintTokenRequest } from "./interfaces";
 
 export class NanostoreBackend {
 
-  /**
+  anonApiCall: AxiosInstance // = anonApiCall();
+  constructor(
+    private backendUrl: string
+  ) {
+    this.anonApiCall = anonApiCall(backendUrl)
+  }  /**
    * @description Mint an nft that could be 3d printed
    * ------------------------------------------------
    * @param stlFile 
@@ -27,7 +33,7 @@ export class NanostoreBackend {
       }
 
       return new Promise((resolve, reject) => {
-        anonApiCall.post("/product/near/mint", req)
+        this.anonApiCall.post("/product/near/mint", req)
         .then(({ data, status }) => {
           resolve(data);
         })
@@ -53,7 +59,7 @@ export class NanostoreBackend {
       productId
     }
     return new Promise((resolve, reject) => {
-		  anonApiCall.post("/print-event/print", body)
+		  this.anonApiCall.post("/print-event/print", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})
@@ -88,7 +94,7 @@ export class NanostoreBackend {
       owner
     }
     return new Promise((resolve, reject) => {
-		  anonApiCall.post("/print-event/register-deposit", body)
+		  this.anonApiCall.post("/print-event/register-deposit", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})
@@ -124,7 +130,7 @@ export class NanostoreBackend {
       transactionHashes
     }
     return new Promise((resolve, reject) => {
-		  anonApiCall.post("/print-event/confirm-deposit", body)
+		  this.anonApiCall.post("/print-event/confirm-deposit", body)
 			.then(({ data, status }) => {
 				resolve(data);
 			})

@@ -27,4 +27,8 @@ export class CannotConnectError extends Error {
     public static becauseUnsupportedNetwork() {
         return new CannotConnectError(ERRORS.CONNECT.USUPPORTED_NETWORK)
     }
+
+    public static becauseNoBackendUrl() {
+        return new CannotConnectError(ERRORS.CONNECT.NO_BACKEND_URL)
+    }
 }

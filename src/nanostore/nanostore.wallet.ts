@@ -53,7 +53,8 @@ export class NanostoreWallet {
   public constructor(
     private apiKey: string,
     public networkName: NearNetwork,
-    private contractId: string
+    private contractId: string,
+    private backendUrl: string
   ) {
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
@@ -187,7 +188,8 @@ export class NanostoreWallet {
     ) {
     const account = this._currentAccount$.value || undefined
 
-    return await mintToken(referenceObject, numToMint, account)
+    if(!this.backendUrl) throw CannotConnectError.becauseNoBackendUrl()
+    return await mintToken(referenceObject, numToMint, this.backendUrl, account)
   }
 
   public async listTokenForSale(token_id: string, price: number) {
@@ -222,14 +224,26 @@ export class NanostoreWallet {
     // contractId: string
   ) {
     const account = this._currentAccount$.value || undefined
-    return await initPrintToken(tokenId, nearReference, productId, printingFee, printerId, this.contractId, account)
+    if(!this.backendUrl) throw CannotConnectError.becauseNoBackendUrl()
+    return await initPrintToken(tokenId, nearReference, productId, printingFee, printerId, this.contractId, this.backendUrl, account)
   }
 
+  /**
+   * @description confirm print of owned token
+   * @param tokenId
+   * @param transactionHashes
+   * @param nearReference
+   * @param productId
+   * @returns
+   * @throws {CannotConnectError} if mintbase signout method fails
+   */
   public async confirmPrintOwnedToken(tokenId: string, transactionHashes: string, nearReference: string, productId: string){
     
     const account = await firstValueFrom(this._currentAccount$.pipe(filter(account => account !== null)))// .value || undefined
-    await confirmPrintToken(tokenId, nearReference, productId, transactionHashes, account!)
-    return await callToPrint(tokenId, nearReference, productId);
+    if(!this.backendUrl) throw CannotConnectError.becauseNoBackendUrl()
+    
+    await confirmPrintToken(tokenId, nearReference, productId, transactionHashes, this.backendUrl, account!)
+    return await callToPrint(tokenId, nearReference, productId, this.backendUrl);
   }
 
 
