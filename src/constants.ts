@@ -1,5 +1,4 @@
 import BN from 'bn.js'
-import { MetadataField } from 'mintbase';
 
 export const CLOUD_URI = 'https://us-central1-omni-live.cloudfunctions.net';
 export const API_VERSION = '1'
@@ -47,8 +46,8 @@ export const ZERO = new BN('0')
 export const DEPLOY_STORE_COST = new BN('10500000000000000000000000')
 
 export const VALID_FILE_FORMATS: { [key: string]: string[] } = {
-  [MetadataField.Media]: ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'],
-  [MetadataField.Animation_url]: [
+  media: ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml'],
+  animation_url: [
     'image/png',
     'image/jpeg',
     'image/gif',
@@ -62,7 +61,7 @@ export const VALID_FILE_FORMATS: { [key: string]: string[] } = {
     'model/gltf+json',
     'application/octet-stream',
   ],
-  [MetadataField.Document]: ['application/pdf'],
+  document: ['application/pdf'],
 }
 
 export const FILE_UPLOAD_SIZE_LIMIT = 31457280 // 30MB

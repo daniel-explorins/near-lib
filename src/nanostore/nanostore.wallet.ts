@@ -13,6 +13,12 @@ import { deployStore } from "./functions/store-creation.functions";
 import { callToPrint, confirmPrintToken, initPrintToken } from "./functions/printing.funtions";
 import { ReferenceObject } from "./interfaces";
 import { mintToken } from "./functions/minting.functions";
+import { setupModal } from "@near-wallet-selector/modal-ui";
+import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
+import { setupLedger } from "@near-wallet-selector/ledger";
+import { setupNearWallet } from "@near-wallet-selector/near-wallet";
+import { setupWalletConnect } from "@near-wallet-selector/wallet-connect";
+import { setupWalletSelector } from "@near-wallet-selector/core";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
@@ -22,6 +28,7 @@ export class NanostoreWallet {
     /** Internal subject that stores login state */
   // private _isLogged$ = new BehaviorSubject(false);
 
+  private walletModal: any = null;
   private _currentAccount$ = new BehaviorSubject<ConnectedWalletAccount | null>(null);
   public currentAccount$ = this._currentAccount$.asObservable();
   /** External public observable to login state */
@@ -69,7 +76,8 @@ export class NanostoreWallet {
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
-    this.init()
+    this.walletSelectorSetup();
+    this.init();
   }
 
   /**
@@ -83,41 +91,51 @@ export class NanostoreWallet {
 
   }
 
+  public async walletSelectorSetup() {
+
+    const _selector = await setupWalletSelector({
+      network: "testnet",
+      debug: true,
+      modules: [
+        setupMyNearWallet(),
+        setupLedger(),
+        setupNearWallet(),
+        setupWalletConnect({
+          projectId: "c4f79cc...",
+          metadata: {
+            name: "NEAR Wallet Selector",
+            description: "Example dApp used by NEAR Wallet Selector",
+            url: "https://github.com/near/wallet-selector",
+            icons: ["https://avatars.githubusercontent.com/u/37784886"],
+          },
+        })
+      ],
+    });
+
+    this.walletModal = setupModal(_selector, {
+      contractId: this.contractId,
+    });
+
+    // const state = _selector.store.getState();
+    // Cuando no estamos logeados esto peta
+    try {
+      // wallet es el que contiene los métodos sigin y signout
+      const wallet = await _selector.wallet();
+      const accounts = await wallet.getAccounts();
+    } catch(err) {
+
+    }
+
+  }
+
   /**
    * @description Usually this method must be called on login button action
    * @description Currently making a connection to the mintbase wallet
    * ------------------------------------------------------------------------------------
    * @throws {CannotConnectError} if connection to mintbase could not be made
    */
-  public async connect()// : Promise<void>
-    
-  {   
-    if (this.isConnected()) {
-      console.warn('near-lib connect(): connecting an already connected wallet.')
-      return;
-    }
-
-    if(!this.activeWalletConnection) {
-      console.log('no active wallet connection');
-      return;
-    }
-    
-    try {
-      console.log('logging.......');
-      // https://docs.near.org/tools/near-api-js/wallet
-      const signIn = await this.activeWalletConnection?.requestSignIn({
-        contractId: this.contractId,
-        successUrl: '',
-        failureUrl: '',
-      });
-      console.log('signIn : ', signIn);
-      const account = this.activeWalletConnection.account();
-      this._currentAccount$.next(account);
-    } catch (error) {
-      console.log('error: ', error);
-      this._currentAccount$.next(null);
-      throw CannotConnectError.becauseMintbaseLoginFail();
-    }
+  public async connect(){   
+    this.walletModal.show();
   }
 
   /**
@@ -150,17 +168,19 @@ export class NanostoreWallet {
 
     // If the wallet is not connected, we go to the connection page
     const near = await nearConnect(_connectionObject);
-
     this.activeNearConnection = near;
+    // Este es el objeto connection
     this.activeWalletConnection = new WalletConnection(near, APP_KEY_PREFIX);
+
     if(this.activeWalletConnection.isSignedIn()) {
+      console.log('Im connected ... ')
         const account = this.activeWalletConnection.account();
         this._currentAccount$.next(account);
-
         const details = await this.getActiveAccountDetails();
     
     } else {
       this._currentAccount$.next(null);
+      console.log('Im not connected ... ')
       const isAsyncSignedIn = await this.activeWalletConnection?.isSignedInAsync()
       if(isAsyncSignedIn) {
         const account = this.activeWalletConnection.account();

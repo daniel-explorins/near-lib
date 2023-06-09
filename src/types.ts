@@ -1,4 +1,3 @@
-import { Constants, Royalties, Token } from 'mintbase';
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 import { ConnectedWalletAccount } from "near-api-js";
 
@@ -22,7 +21,7 @@ export interface NetworkConfig {
   headers: { [key: string]: string | number; }
 }
 
-interface MintbaseConstants extends Constants {
+interface MintbaseConstants  {
 
 }
 
@@ -47,11 +46,11 @@ interface NearWalletDetails {
   contractName: string
 }
 
-interface NearToken extends Token {
+interface NearToken  {
   creator: string
 }
 
-interface NearRoyalties extends Royalties {
+interface NearRoyalties  {
   [creator: string]: number
 }
 
