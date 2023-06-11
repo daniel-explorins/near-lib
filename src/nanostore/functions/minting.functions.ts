@@ -3,7 +3,6 @@ import { ReferenceObject } from '../interfaces';
 import { NanostoreBackend } from '../nanostore.backend';
 import { connect as nearConnect, ConnectedWalletAccount } from "near-api-js";
 
-const nanoStoreBackend = new NanostoreBackend();
 
 /**
    * @description Mint an nft that could be 3d printed
@@ -15,8 +14,10 @@ const nanoStoreBackend = new NanostoreBackend();
 export async function mintToken(
     referenceObject: ReferenceObject,
     numToMint: number,
+    backendUrl: string,
     account?: ConnectedWalletAccount,
   ) {
+    const nanoStoreBackend = new NanostoreBackend(backendUrl)
 
     if(!account) throw new Error('No wallet Connected Account');
     // if(!this.isConnected()) throw new Error('Not logged'); 

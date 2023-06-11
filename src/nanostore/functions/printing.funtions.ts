@@ -2,13 +2,18 @@ import { connect as nearConnect, ConnectedWalletAccount, utils } from "near-api-
 import { toBN } from "./../../utils/helpers";
 import { NanostoreBackend } from "../nanostore.backend";
 
-const nanoStoreBackend = new NanostoreBackend();
-
 /**
    * @description call nft_deposit_print on contract
    * -----------<s---------------------------------------------------
    * @param token_id 
-   * @param printing_fee 
+   * @param nearReference
+   * @param productId
+   * @param printing_fee
+   * @param printerId
+   * @param contractId
+   * @param account
+   * 
+   * @returns 
    */
 export async function initPrintToken(
     token_id: string,
@@ -17,10 +22,13 @@ export async function initPrintToken(
     printing_fee: number,
     printerId: string,
     contractId: string,
+    backendUrl: string, 
     account?: ConnectedWalletAccount,
   ) {
     // const account = this.activeWalletConnection?.account()
     const accountId = account?.accountId
+    const nanoStoreBackend = new NanostoreBackend(backendUrl)
+
 
 	if (!account || !accountId) throw new Error('Undefined account');
 
@@ -65,11 +73,14 @@ export async function confirmPrintToken(
   token_id: string,
   nearReference: string,
   productId: string,
-  transactionHashes: string, 
+  transactionHashes: string,
+  backendUrl: string, 
   account?: ConnectedWalletAccount
   ) {
   
   const accountId = account?.accountId
+  const nanoStoreBackend = new NanostoreBackend(backendUrl)
+
 
 	if (!account || !accountId) throw new Error('Undefined account');
 
@@ -97,7 +108,9 @@ export async function callToPrint(
     tokenId: string,
     nearReference: string,
     productId: string,
+    backendUrl: string,
   ) {
+    const nanoStoreBackend = new NanostoreBackend(backendUrl)
     
     try {
       await nanoStoreBackend.print(tokenId, nearReference, productId);

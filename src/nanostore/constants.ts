@@ -1,6 +1,5 @@
 import { MintMetadata } from "mintbase";
 
-export const NANOSTORE_BACKEND_URL = 'https://oejnh81rzi.execute-api.eu-west-1.amazonaws.com/dev';
 
 export const APP_KEY_PREFIX = 'near_app';
 
