@@ -118,11 +118,9 @@ limit: number = 10
    * ------------------------------------------------------------------------------------
    * @returns 
    */
-  public async getAccountTokens(account: ConnectedWalletAccount, offset = 0, limit = 1000) {
+  public async getAccountTokens(accountId: string, offset = 0, limit = 1000) {
 
-    // const account = this.activeWalletConnection?.account();
-    if(!account) throw new Error('No account defined');
-    const accountId = account.accountId;
+    if(!accountId) throw new Error('No account defined');
     return await this.nanostoreGraphql.getTokensFromOwner(accountId, offset, limit);
 
   }
