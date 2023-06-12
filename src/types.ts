@@ -1,5 +1,6 @@
 import { FunctionCall, Transaction } from 'near-api-js/lib/transaction'
 import { ConnectedWalletAccount } from "near-api-js";
+import { AccountState } from '@near-wallet-selector/core';
 
 /** Lib only works with near */
 export enum Chain {
@@ -145,7 +146,8 @@ export interface MintbaseNftMetadata {
 }
 
 export {
-  ConnectedWalletAccount,
+  // ConnectedWalletAccount,
+  AccountState,
   MintbaseConstants,
   NearWalletDetails,
   NearToken,

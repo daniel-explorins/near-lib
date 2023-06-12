@@ -1,7 +1,7 @@
 import { connect as nearConnect, ConnectedWalletAccount, keyStores, Near, utils, WalletConnection } from "near-api-js";
-import { BehaviorSubject, filter, firstValueFrom, map, shareReplay } from "rxjs";
+import { Observable, filter, firstValueFrom, interval, map, shareReplay, tap } from "rxjs";
 import { CannotConnectError, CannotDisconnectError } from "../error";
-import { NearNetwork } from "../types";
+import { AccountState, NearNetwork } from "../types";
 import { APP_KEY_PREFIX, 
   ConfigData, 
   NANOSTORE_MAINNET_CONFIG, 
@@ -13,12 +13,7 @@ import { deployStore } from "./functions/store-creation.functions";
 import { callToPrint, confirmPrintToken, initPrintToken } from "./functions/printing.funtions";
 import { ReferenceObject } from "./interfaces";
 import { mintToken } from "./functions/minting.functions";
-import { setupModal } from "@near-wallet-selector/modal-ui";
-import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
-import { setupLedger } from "@near-wallet-selector/ledger";
-import { setupNearWallet } from "@near-wallet-selector/near-wallet";
-import { setupWalletConnect } from "@near-wallet-selector/wallet-connect";
-import { setupWalletSelector } from "@near-wallet-selector/core";
+import { WalletConnector } from "./../wallet-connector";
 
 /** 
  * @description Class that extends the mintbase wallet for use in specific applications
@@ -26,13 +21,27 @@ import { setupWalletSelector } from "@near-wallet-selector/core";
  */
 export class NanostoreWallet {
     /** Internal subject that stores login state */
-  // private _isLogged$ = new BehaviorSubject(false);
+  private walletConnector = new WalletConnector(this.networkName, this.contractId, this.walletConnectProjectId);
+  
+  get ConnectedWalletAccount(): ConnectedWalletAccount | undefined{
+    return this.activeWalletConnection?.account()
+  }
 
-  private walletModal: any = null;
-  private _currentAccount$ = new BehaviorSubject<ConnectedWalletAccount | null>(null);
-  public currentAccount$ = this._currentAccount$.asObservable();
+  public currentAccount$: Observable<AccountState | null> = this.walletConnector.walletSelectorState$.pipe(
+    map((state) => {
+      if(!state) return null;
+      return state.accounts.find((account) => account.active) || null
+    }),
+    tap((account) => console.log('account: ', account)),
+    /* tap((account) => {
+      interval(5000).pipe(
+        tap(() => console.log('wallet connect account:  ', this.ConnectedWalletAccount))
+      ).subscribe()
+    }), */
+    shareReplay(1)
+  )
   /** External public observable to login state */
-  public isLogged$ = this._currentAccount$.asObservable()
+  public isLogged$ = this.currentAccount$
   .pipe(
     map((account) => {
       if(!account) return false;
@@ -48,7 +57,6 @@ export class NanostoreWallet {
   private keyStore?: KeyStore;
   private configData?: ConfigData
 
-  
   /**
    * @MF TODO: Move initialization from constructor to static public method ?
    * @description The constructor only sets three variables: apiKey, networkName and mintbaseWallet
@@ -61,7 +69,8 @@ export class NanostoreWallet {
     private apiKey: string,
     public networkName: NearNetwork,
     private contractId: string,
-    private backendUrl: string
+    private backendUrl: string,
+    private walletConnectProjectId?: string
   ) {
     // MintbaseWallet is required for use this library
     // First of all we set mintbaseWalletConfig
@@ -77,7 +86,14 @@ export class NanostoreWallet {
       default:
         throw CannotConnectError.becauseUnsupportedNetwork();
     }
-    this.walletSelectorSetup();
+    /* this.walletConnector.walletSelectorSetup(
+      networkName,
+      contractId 
+    ); */
+    this.walletConnector.walletSelectorState$.subscribe((state) => {
+      console.log('state', state);
+    })
+
     this.init();
   }
 
@@ -92,51 +108,14 @@ export class NanostoreWallet {
 
   }
 
-  public async walletSelectorSetup() {
-
-    const _selector = await setupWalletSelector({
-      network: "testnet",
-      debug: true,
-      modules: [
-        setupMyNearWallet(),
-        setupLedger(),
-        setupNearWallet(),
-        setupWalletConnect({
-          projectId: "c4f79cc...",
-          metadata: {
-            name: "NEAR Wallet Selector",
-            description: "Example dApp used by NEAR Wallet Selector",
-            url: "https://github.com/near/wallet-selector",
-            icons: ["https://avatars.githubusercontent.com/u/37784886"],
-          },
-        })
-      ],
-    });
-
-    this.walletModal = setupModal(_selector, {
-      contractId: this.contractId,
-    });
-
-    // const state = _selector.store.getState();
-    // Cuando no estamos logeados esto peta
-    try {
-      // wallet es el que contiene los métodos sigin y signout
-      const wallet = await _selector.wallet();
-      const accounts = await wallet.getAccounts();
-    } catch(err) {
-
-    }
-
-  }
-
   /**
    * @description Usually this method must be called on login button action
    * @description Currently making a connection to the mintbase wallet
    * ------------------------------------------------------------------------------------
    * @throws {CannotConnectError} if connection to mintbase could not be made
    */
-  public async connect(){   
-    this.walletModal.show();
+  public async connect(){
+    return await this.walletConnector.showWalletModal()
   }
 
   /**
@@ -175,24 +154,21 @@ export class NanostoreWallet {
 
     if(this.activeWalletConnection.isSignedIn()) {
       console.log('Im connected ... ')
-        const account = this.activeWalletConnection.account();
-        this._currentAccount$.next(account);
-        const details = await this.getActiveAccountDetails();
+        /* const account = this.activeWalletConnection.account();
+        this.setCurrentAccount(account);
+        const details = await this.getActiveAccountDetails(); */
     
     } else {
-      this._currentAccount$.next(null);
+      // this.setCurrentAccount(null);
       console.log('Im not connected ... ')
       const isAsyncSignedIn = await this.activeWalletConnection?.isSignedInAsync()
-      if(isAsyncSignedIn) {
-        const account = this.activeWalletConnection.account();
-        this._currentAccount$.next(account);
-      }
     }
   }
 
   // TODO: only for admin
   public async deployStore(symbol: string) {
-    const account = this._currentAccount$.value || undefined
+    const account = this.ConnectedWalletAccount
+    if(!account) throw CannotConnectError.becauseMintbaseLoginFail()
     await deployStore(symbol, account)
   }
 
@@ -206,8 +182,8 @@ export class NanostoreWallet {
     numToMint: number,
     referenceObject: ReferenceObject
     ) {
-    const account = this._currentAccount$.value || undefined
-
+    const account = this.ConnectedWalletAccount
+    if(!account) throw CannotConnectError.becauseMintbaseLoginFail()
     if(!this.backendUrl) throw CannotConnectError.becauseNoBackendUrl()
     return await mintToken(referenceObject, numToMint, this.backendUrl, account)
   }
@@ -222,8 +198,7 @@ export class NanostoreWallet {
 
   // TODO: open for token on other contract??
   public purchaseToken(token_id: string, price: string) {
-    const account = this._currentAccount$.value || undefined
-    purchaseToken(token_id, price, this.contractId, account)
+    purchaseToken(token_id, price, this.contractId, this.ConnectedWalletAccount)
   }
 
   /**
@@ -243,7 +218,8 @@ export class NanostoreWallet {
     printingFee: number,
     // contractId: string
   ) {
-    const account = this._currentAccount$.value || undefined
+    const account = this.ConnectedWalletAccount
+    if(!account) throw CannotConnectError.becauseMintbaseLoginFail()
     if(!this.backendUrl) throw CannotConnectError.becauseNoBackendUrl()
     return await initPrintToken(tokenId, nearReference, productId, printingFee, printerId, this.contractId, this.backendUrl, account)
   }
@@ -259,10 +235,10 @@ export class NanostoreWallet {
    */
   public async confirmPrintOwnedToken(tokenId: string, transactionHashes: string, nearReference: string, productId: string){
     
-    const account = await firstValueFrom(this._currentAccount$.pipe(filter(account => account !== null)))// .value || undefined
+    const account = await firstValueFrom(this.currentAccount$.pipe(filter(account => account !== null)))// .value || undefined
     if(!this.backendUrl) throw CannotConnectError.becauseNoBackendUrl()
     
-    await confirmPrintToken(tokenId, nearReference, productId, transactionHashes, this.backendUrl, account!)
+    await confirmPrintToken(tokenId, nearReference, productId, transactionHashes, this.backendUrl, account!.accountId)
     return await callToPrint(tokenId, nearReference, productId, this.backendUrl);
   }
 
@@ -274,10 +250,11 @@ export class NanostoreWallet {
    * @returns 
    */
   public async getActiveAccountDetails(): Promise<any> {
-    const account = this._currentAccount$.value
-    const accountId = account?.accountId
+    const account = this.ConnectedWalletAccount
+    const accountId = this.ConnectedWalletAccount?.accountId
     // @TODO throw error
-    if (!accountId) return 
+    if (!accountId || !account) return
+
     const keyPair = await this.keyStore?.getKey(this.networkName, accountId)
     // @TODO throw error
     if (!keyPair) return;
@@ -304,11 +281,15 @@ export class NanostoreWallet {
    */
   public disconnect(): void 
   {
-    if(!this._currentAccount$.value) throw CannotDisconnectError.becauseAlreadyDisconnected();
+    // TODO : check if already disconnected
+    if(!this.activeWalletConnection?.account()) throw CannotDisconnectError.becauseAlreadyDisconnected();
     
     this.activeWalletConnection?.signOut()
     this.activeNearConnection = undefined
-    // this.activeAccount$= undefined
-    this._currentAccount$.next(null);
+    // this.activeWalletConnection.
+
+    // this.setCurrentAccount(null); 
+
+    this.walletConnector.signOut()
   }
 }

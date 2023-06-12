@@ -75,14 +75,13 @@ export async function confirmPrintToken(
   productId: string,
   transactionHashes: string,
   backendUrl: string, 
-  account?: ConnectedWalletAccount
+  accountId?: string
   ) {
   
-  const accountId = account?.accountId
   const nanoStoreBackend = new NanostoreBackend(backendUrl)
 
 
-	if (!account || !accountId) throw new Error('Undefined account');
+	if (!accountId) throw new Error('Undefined account');
 
     // TODO: confirmation on backend
     // TODO: change type any
@@ -102,7 +101,6 @@ export async function confirmPrintToken(
    * @param token_id
    * @param nearReference
    * @param productId
-   * @param account
     */
 export async function callToPrint(
     tokenId: string,

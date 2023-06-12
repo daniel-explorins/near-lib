@@ -31,6 +31,7 @@
   },
   "files": [
     "package.json",
+    "src/assets",
     "lib"
   ],
   "nodemonConfig": {

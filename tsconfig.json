@@ -1,7 +1,9 @@
 {
     "include": ["./src/**/*"],
     "exclude": ["node_modules", "lib", "**/*.test.ts"],
-    "files": ["src/index.ts"],
+    "files": [
+      "src/index.ts"
+    ],
     "compilerOptions": {
       "outDir": "lib",
       "rootDir": "src",
