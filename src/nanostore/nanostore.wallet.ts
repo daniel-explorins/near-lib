@@ -1,13 +1,6 @@
-import { connect as nearConnect, ConnectedWalletAccount, keyStores, Near, utils, WalletConnection } from "near-api-js";
-import { Observable, filter, firstValueFrom, interval, map, shareReplay, tap } from "rxjs";
-import { CannotConnectError, CannotDisconnectError } from "../error";
+import { Observable, filter, firstValueFrom, map, shareReplay, tap } from "rxjs";
+import { CannotConnectError } from "../error";
 import { AccountState, NearNetwork } from "../types";
-import { APP_KEY_PREFIX, 
-  ConfigData, 
-  NANOSTORE_MAINNET_CONFIG, 
-  NANOSTORE_TESTNET_CONFIG } from "./constants";
-import { initializeExternalConstants } from "../utils/external-constants";
-import { KeyStore } from "near-api-js/lib/key_stores";
 import { deposit_and_set_price, purchaseToken } from "./functions/transactions.functions";
 import { deployStore } from "./functions/store-creation.functions";
 import { callToPrint, confirmPrintToken, initPrintToken } from "./functions/printing.funtions";
@@ -44,13 +37,6 @@ export class NanostoreWallet {
     tap((isLogged) => console.log('isLogged: ', isLogged)),
     shareReplay(1)
     );
-
-  // Internal used variables
-  // private activeWalletConnection?: WalletConnection;
-  // private activeNearConnection?: Near;
-  private constants?: any;
-  // private keyStore?: KeyStore;
-  // private configData?: ConfigData
 
   /**
    * @MF TODO: Move initialization from constructor to static public method ?
@@ -148,6 +134,7 @@ export class NanostoreWallet {
       console.log('Im not connected ... ')
       const isAsyncSignedIn = await this.activeWalletConnection?.isSignedInAsync()
     } */
+
   }
 
   // TODO: only for admin
