@@ -1,6 +1,7 @@
-import { connect as nearConnect, ConnectedWalletAccount, utils } from "near-api-js";
+import { connect as nearConnect, utils } from "near-api-js";
 import { toBN } from "./../../utils/helpers";
 import { NanostoreBackend } from "../nanostore.backend";
+import { AccountState } from "@near-wallet-selector/core";
 
 /**
    * @description call nft_deposit_print on contract
@@ -23,7 +24,8 @@ export async function initPrintToken(
     printerId: string,
     contractId: string,
     backendUrl: string, 
-    account?: ConnectedWalletAccount,
+    account: AccountState,
+    wallet: any
   ) {
     // const account = this.activeWalletConnection?.account()
     const accountId = account?.accountId
@@ -53,11 +55,21 @@ export async function initPrintToken(
 
     const amount_bn = toBN(amount);
 
-    const transfer = await account.sendMoney(
-      contractId,
-      amount_bn
-    );
-
+    await wallet.signAndSendTransactions({
+      transactions: [
+        {
+          receiverId: contractId,
+          actions: [
+            {
+              type: "Transfer",
+              params: {
+                deposit: amount_bn,
+              },
+            },
+          ],
+        },
+      ],
+    });
   }
 
 /**

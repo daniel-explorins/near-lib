@@ -1,12 +1,9 @@
 import { cannotMakeOfferError } from "./../../error/cannotMakeOfferError";
 import { MARKETPLACE_HOST_NEAR_ACCOUNT, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "./../../mintbase/constants";
-import { connect as nearConnect, ConnectedWalletAccount, Contract, Near, utils, WalletConnection } from "near-api-js";
+import { connect as nearConnect, ConnectedWalletAccount, Contract, Near, utils, WalletConnection, Account, transactions } from "near-api-js";
 import { MAX_GAS } from "./../../constants";
-import { NearTransaction, OptionalMethodArgs } from "./../../types";
+import { AccountState, NearTransaction, OptionalMethodArgs } from "./../../types";
 import { JsonToUint8Array, calculateListCost, toBN } from "./../../utils/helpers";
-import { Action, createTransaction, functionCall } from "near-api-js/lib/transaction";
-import { base_decode } from "near-api-js/lib/utils/serialize";
-import { PublicKey } from "near-api-js/lib/utils"; 
 
 const elliptic = require("elliptic").ec;
 
@@ -22,16 +19,19 @@ export async function purchaseToken(
   token_id: string, 
   price: string, 
   contractId: string,
-  account?: ConnectedWalletAccount) {
-
-    const accountId = account?.accountId
+  // 
+  wallet: any,
+  account: Account | AccountState
+  ) {
     const gas = MAX_GAS;
+    const accountId = account?.accountId
+    
 
     if (!account || !accountId) throw cannotMakeOfferError.becauseUserNotFound();
 
     // Mitbase market connection
     const contract = new Contract(
-      account,
+      account as Account,
       MARKETPLACE_HOST_NEAR_ACCOUNT,
       {
         viewMethods:
@@ -40,18 +40,32 @@ export async function purchaseToken(
             MINTBASE_MARKET_CONTRACT_CALL_METHODS,
       }
     )
+
     try {
       const amount = utils.format.parseNearAmount(price)
-        // @ts-ignore: method does not exist on Contract type
-        await contract.buy({
-            args: {
-              // TODO: open for other token
-              nft_contract_id: contractId, //  'nanostore_store.dev-1675363616907-84002391197707',
-              token_id
+
+        await wallet.signAndSendTransactions({
+          transactions: [
+            {
+              receiverId: contract.contractId, // "storepruebas4.nanostore.testnet", //'polexplorins.testnet'
+              actions: [
+                {
+                  type: "FunctionCall",
+                  params: {
+                    methodName: "buy",
+                    args: {
+                      // TODO: open for other token
+                      nft_contract_id: contractId, //  'nanostore_store.dev-1675363616907-84002391197707',
+                      token_id
+                    },
+                    gas: gas,
+                    deposit: amount,
+                  },
+                },
+              ],
             },
-            gas,
-            amount: amount, // attached deposit in yoctoNEAR
-        })
+          ],
+        });
     } catch (error) {
         console.log('error: ', error)
         throw cannotMakeOfferError.becauseMintbaseError();
@@ -70,10 +84,9 @@ export async function purchaseToken(
   export async function deposit_and_set_price(
     tokenId: string,
 	  price: number,
-      // account: ConnectedWalletAccount,
-    walletConnection: WalletConnection,
-    nearConnection: Near,
+    account: any,// ConnectedWalletAccount,
     contractId: string,
+    wallet: any
   ) {
     const priceInNear = utils.format.parseNearAmount(price.toString());
     console.log('priceInNear: ', priceInNear);
@@ -97,19 +110,6 @@ export async function purchaseToken(
     const listCost = calculateListCost(1);
     const deposit = utils.format.parseNearAmount(listCost.toString()) ?? '0';
     const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
-    let publicKeys;
-
-    const keys = await walletConnection.account().getAccessKeys();
-    if(keys !== undefined) {
-      publicKeys = keys.find(key => key.public_key)?.public_key;
-      
-    } else {
-      const ec = new elliptic("secp256k1");
-      const keyPair = ec.genKeyPair();
-      publicKeys = keyPair.getPublic().encode("hex");
-    }
-  
-    // const publicKey = this.activeNearConnection?.config.keyPair.getPublic().encode("hex");
 
     const transactions: NearTransaction[] = [
       {
@@ -123,7 +123,7 @@ export async function purchaseToken(
         ],
         signerId: "",
         receiverId: MARKETPLACE_HOST_NEAR_ACCOUNT,
-        publicKey: publicKeys,
+        publicKey: account.publicKey.toString(),
         actions: [],
         nonce: toBN(0),
         blockHash: args_base64,
@@ -140,7 +140,7 @@ export async function purchaseToken(
         ],
         signerId: "",
         receiverId: contractId,
-        publicKey: publicKeys,
+        publicKey: account.publicKey.toString(),
         actions: [],
         nonce: toBN(0),
         blockHash: args_base64,
@@ -148,7 +148,7 @@ export async function purchaseToken(
       }
     ];
     try {
-      await executeMultipleTransactions({transactions, walletConnection, nearConnection});
+      await executeMultipleTransactions({transactions, wallet});
     } catch (error) {
       console.log('error Listing: ', error);
     }
@@ -164,31 +164,35 @@ export async function purchaseToken(
   */
   export async function executeMultipleTransactions({
     transactions,
-    walletConnection,
-    nearConnection,
+    wallet,
     options,
   }: {
     transactions: NearTransaction[],
-    walletConnection: WalletConnection,
-    nearConnection: Near,
+    wallet: any,
     options?: OptionalMethodArgs
   }): Promise<void> {
 
-    const nearTransactions = await Promise.all(
-      transactions.map(async (tx, i) => {
-        return await generateTransaction({
+    const nearTransactions = // await Promise.all(
+      transactions.map((tx, i) => {
+        const transaction = {
           receiverId: tx.receiverId,
           actions: tx.functionCalls.map((fc) => {
-            return functionCall(fc.methodName, fc.args, fc.gas, fc.deposit)
-          }),
-          nonceOffset: i + 1,
-          nearConnection,
-          walletConnection,
-        })
-      })
-    )
+            const action = {
+              type: "FunctionCall",
+              params: {
+                methodName: fc.methodName,
+                args: fc.args,
+                gas: fc.gas,
+                deposit: fc.deposit
+              }
+            }
+            return action
+          })
+        }
+        return transaction
 
-    walletConnection.requestSignTransactions({
+      })
+    await wallet.signAndSendTransactions({
       transactions: nearTransactions,
       callbackUrl: options?.callbackUrl,
       meta: options?.meta,
@@ -201,70 +205,9 @@ export async function purchaseToken(
    * @param account 
    * @returns 
    */
-  async function getLocalKey(nearConnection: Near, account: ConnectedWalletAccount) {
+  /* async function getLocalKey(nearConnection: Near, account: ConnectedWalletAccount) {
     return await nearConnection.connection.signer.getPublicKey(
         account.accountId,
         nearConnection.connection.networkId
       )
-  }
-
-  /**
-   * @description Generate transaction
-   * @param receiverId
-   * @param actions
-   * @param nonceOffset
-   * @param nearConnection
-   * @param walletConnection
-   */
-  export async function generateTransaction({
-    receiverId,
-    actions,
-    nonceOffset,
-    nearConnection,
-    walletConnection
-  }: {
-    receiverId: any
-    actions: Action[]
-    nonceOffset: number,
-    nearConnection: Near, 
-    walletConnection: WalletConnection
-  }) {
-    if (!nearConnection || !walletConnection
-        ) {
-      throw new Error(`No active wallet or NEAR connection.`)
-    }
-
-    const account = walletConnection.account()
-
-    const localKey = await getLocalKey(nearConnection, account)
-      
-    const accessKey = await account.accessKeyForTransaction(receiverId, actions, localKey)
-
-    if (!accessKey) {
-      throw new Error(
-        `Cannot find matching key for transaction sent to ${receiverId}`
-      )
-    }
-
-    const block = await nearConnection?.connection.provider.block({
-      finality: 'final',
-    })
-
-    if (!block) {
-      throw new Error(`Cannot find block for transaction sent to ${receiverId}`)
-    }
-
-    const blockHash = base_decode(block?.header?.hash)
-
-    const publicKey = PublicKey.from(accessKey.public_key)
-    const nonce = accessKey.access_key.nonce + nonceOffset
-
-    return createTransaction(
-        account.accountId,
-        publicKey,
-        receiverId,
-        nonce,
-        actions,
-        blockHash
-    )
-  }
+  } */

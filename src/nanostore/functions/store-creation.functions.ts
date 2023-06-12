@@ -1,8 +1,8 @@
-import { OptionalMethodArgs } from "./../../types";
-import { ConnectedWalletAccount, Contract } from "near-api-js";
+import { AccountState, OptionalMethodArgs } from "./../../types";
+import { Account, ConnectedWalletAccount, Contract } from "near-api-js";
 import { DEPLOY_STORE_COST, MAX_GAS, MINTBASE_32x32_BASE64_DARK_LOGO, NANOSTORE_FACTORY_CONTRACT_NAME } from "./../../constants";
 import { NANOSTORE_FACTORY_CONTRACT_CALL_METHODS, NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS } from "../constants";
-import { getStoreNameFromAccount } from "./../../utils/nanostore";
+// import { getStoreNameFromAccount } from "./../../utils/nanostore";
 
 /**
    * @description Creates a store. For future developments.
@@ -12,7 +12,8 @@ import { getStoreNameFromAccount } from "./../../utils/nanostore";
    */
 export async function deployStore(
     symbol: string,
-    account?: ConnectedWalletAccount,
+    account: Account | AccountState,
+    storeName: string,
     options?: OptionalMethodArgs & { attachedDeposit?: string; icon?: string }
   ): Promise<boolean> {
     
@@ -23,7 +24,7 @@ export async function deployStore(
     const gas = MAX_GAS;
 
     const contract = new Contract(
-      account,
+      account as Account,
       NANOSTORE_FACTORY_CONTRACT_NAME,
       {
           viewMethods: NANOSTORE_FACTORY_CONTRACT_VIEW_METHODS,
@@ -35,7 +36,7 @@ export async function deployStore(
       owner_id: accountId,
       metadata: {
         spec: 'nft-1.0.0',
-        name: getStoreNameFromAccount(account),
+        name: storeName,// getStoreNameFromAccount(account),
         symbol: symbol.replace(/[^a-z0-9]+/gim, '').toLowerCase(),
         icon: options?.icon ?? MINTBASE_32x32_BASE64_DARK_LOGO,
         base_uri: null,

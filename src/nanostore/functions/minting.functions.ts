@@ -1,7 +1,8 @@
 import { uploadReference } from '@mintbase-js/storage';
 import { ReferenceObject } from '../interfaces';
 import { NanostoreBackend } from '../nanostore.backend';
-import { connect as nearConnect, ConnectedWalletAccount } from "near-api-js";
+// import { connect as nearConnect, ConnectedWalletAccount } from "near-api-js";
+import { AccountState } from '@near-wallet-selector/core';
 
 
 /**
@@ -15,7 +16,7 @@ export async function mintToken(
     referenceObject: ReferenceObject,
     numToMint: number,
     backendUrl: string,
-    account?: ConnectedWalletAccount,
+    account?: AccountState,
   ) {
     const nanoStoreBackend = new NanostoreBackend(backendUrl)
 

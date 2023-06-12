@@ -14,7 +14,7 @@ import { setupWelldoneWallet } from "@near-wallet-selector/welldone-wallet";
 import { setupNearSnap } from "@near-wallet-selector/near-snap"; */
 import { setupLedger } from "@near-wallet-selector/ledger";
 import { setupWalletConnect } from "@near-wallet-selector/wallet-connect";
-import { from, shareReplay, switchMap, tap } from "rxjs";
+import { filter, from, shareReplay, switchMap, tap } from "rxjs";
 
 /* import { setupNightlyConnect } from "@near-wallet-selector/nightly-connect";
 import { setupNearFi } from "@near-wallet-selector/nearfi";
@@ -51,16 +51,32 @@ export class WalletConnector {
         setupNeth(),
         setupXDEFI(), */
     
+
         // project would need to be registered with Wallet Connect
-        setupWalletConnect({
-          projectId: this.walletConnectProjectId || '',
+        /* setupWalletConnect({
+          projectId: 'e4fee1e3796c37703d2b9705d396b164',
           metadata: {
             name: "nanoStore App",
             description: "nanoStore App Wallet Connect",
             url: "https://github.com/near/wallet-selector",
             icons: ["https://avatars.githubusercontent.com/u/37784886"],
           },
-        }),
+          chainId: "near:testnet",
+            iconUrl: "https://www.nano-store.app/assets/icons/icon-512x512.png",
+        }), */
+
+        setupWalletConnect({
+            projectId: this.walletConnectProjectId || '',
+            metadata: {
+              name: "nanoStore App",
+              description: "nanoStore App Wallet Connect",
+              url: "https://github.com/near/wallet-selector",
+              icons: ["https://avatars.githubusercontent.com/u/37784886"],
+            },
+            chainId: `near:${this.networkName}`,
+              iconUrl: "https://www.nano-store.app/assets/icons/icon-512x512.png",
+          }),
+        
         /* setupNightlyConnect({
           url: "wss://relay.nightly.app/app",
           appMetadata: {
@@ -78,8 +94,14 @@ export class WalletConnector {
     walletSelectorState$ = this.getWalletStateObservable().pipe(
         tap(async ()=> {
             const wallet = await this.selector?.wallet();
-            console.log(wallet)
+            console.log('wallet',wallet)
         }),
+        shareReplay(1)
+    );
+
+    wallet$ = this.walletSelectorState$.pipe(
+        filter((state) => this.selector !== undefined),
+        switchMap((state) => from(this.selector!.wallet())),
         shareReplay(1)
     );
 
@@ -89,8 +111,6 @@ export class WalletConnector {
         private contractId: string,
         private walletConnectProjectId?: string
     ) {
-        console.log(walletConnectProjectId)
-
         //  this.initWalletSelector(networkName)
     }
 
