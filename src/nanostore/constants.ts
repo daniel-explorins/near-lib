@@ -1,7 +1,7 @@
 import { MintMetadata } from "mintbase";
 
 
-export const APP_KEY_PREFIX = 'near_app';
+// export const APP_KEY_PREFIX = 'near_app';
 
 export const NANOSTORE_TESTNET_CONFIG: ConfigData = {
   networkId: "testnet",

@@ -4,8 +4,7 @@ import * as Errors from './error';
 import * as Interfaces from './nanostore/interfaces';
 import { NanostoreWallet } from './nanostore/nanostore.wallet';
 import { Nanostore } from './nanostore/nanostore.store';
-
-// Pruebas git
+import { utils as nearUtils } from 'near-api-js';
 
 export {
   Nanostore,
@@ -13,5 +12,6 @@ export {
   MintbaseGraphql,
   Interfaces,
   types,
-  Errors
+  Errors,
+  nearUtils
 }

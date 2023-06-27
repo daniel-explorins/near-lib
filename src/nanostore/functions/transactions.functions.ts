@@ -1,5 +1,5 @@
 import { cannotMakeOfferError } from "./../../error/cannotMakeOfferError";
-import { MARKETPLACE_HOST_NEAR_ACCOUNT, MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "./../../mintbase/constants";
+import { MINTBASE_MARKET_CONTRACT_CALL_METHODS, MINTBASE_MARKET_CONTRACT_VIEW_METHODS } from "./../../mintbase/constants";
 import { connect as nearConnect, ConnectedWalletAccount, Contract, Near, utils, WalletConnection, Account, transactions } from "near-api-js";
 import { MAX_GAS } from "./../../constants";
 import { AccountState, NearTransaction, OptionalMethodArgs } from "./../../types";
@@ -13,7 +13,10 @@ const elliptic = require("elliptic").ec;
    * @param token_id
    * @param price
    * @param contractId
+   * @param wallet
    * @param account
+   * @param marketplaceHostNearAccount
+   * 
 */
 export async function purchaseToken(
   token_id: string, 
@@ -21,7 +24,8 @@ export async function purchaseToken(
   contractId: string,
   // 
   wallet: any,
-  account: Account | AccountState
+  account: Account | AccountState,
+  marketplaceHostNearAccount: string
   ) {
     const gas = MAX_GAS;
     const accountId = account?.accountId
@@ -32,7 +36,7 @@ export async function purchaseToken(
     // Mitbase market connection
     const contract = new Contract(
       account as Account,
-      MARKETPLACE_HOST_NEAR_ACCOUNT,
+      marketplaceHostNearAccount,
       {
         viewMethods:
             MINTBASE_MARKET_CONTRACT_VIEW_METHODS,
@@ -76,33 +80,35 @@ export async function purchaseToken(
    * @description List a token for sale
    * ------------------------------------------------------------------------------------
    * @param tokenId 
-   * @param price 
-   * @param walletConnection
-   * @param nearConnection
+   * @param price
+   * @param account
    * @param contractId
+   * @param wallet
+   * @param marketplaceHostNearAccount
    */
   export async function deposit_and_set_price(
     tokenId: string,
 	  price: number,
     account: any,// ConnectedWalletAccount,
     contractId: string,
-    wallet: any
+    wallet: any,
+    marketplaceHostNearAccount: string
   ) {
     const priceInNear = utils.format.parseNearAmount(price.toString());
     console.log('priceInNear: ', priceInNear);
+
 	  if(!priceInNear) throw new Error('not price provided');
     
     const args = {};
     const args2 = {
       autotransfer: true,
       token_id: tokenId,
-      account_id:MARKETPLACE_HOST_NEAR_ACCOUNT,
+      account_id: marketplaceHostNearAccount,
       msg: JSON.stringify({
         price: priceInNear.toString(),
         autotransfer: true,
       })
     }
-    
     const args_base64 = JsonToUint8Array(args);
     const args2_base64 = JsonToUint8Array(args2);
 
@@ -122,7 +128,7 @@ export async function purchaseToken(
           }
         ],
         signerId: "",
-        receiverId: MARKETPLACE_HOST_NEAR_ACCOUNT,
+        receiverId: marketplaceHostNearAccount,
         publicKey: account.publicKey.toString(),
         actions: [],
         nonce: toBN(0),
