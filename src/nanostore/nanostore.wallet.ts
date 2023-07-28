@@ -162,13 +162,13 @@ export class NanostoreWallet {
     return await mintToken(referenceObject, numToMint, this.backendUrl, account)
   }
 
-  public async listTokenForSale(token_id: string, price: number, marketplaceHostNearAccount: string) {
+  public async listTokenForSale(token_ids: string[], price: number, marketplaceHostNearAccount: string) {
     
     const account = await firstValueFrom(this.currentAccount$)
     if(!account) throw CannotConnectError.becauseMintbaseLoginFail()
     const wallet = await firstValueFrom(this.walletConnector.wallet$)
 
-    return await deposit_and_set_price(token_id, price, account, this.contractId, wallet, marketplaceHostNearAccount)
+    return await deposit_and_set_price(token_ids, price, account, this.contractId, wallet, marketplaceHostNearAccount)
   }
 
   // TODO: open for token on other contract??

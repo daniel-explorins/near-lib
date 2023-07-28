@@ -1,7 +1,7 @@
 import { CannotConnectError } from "./../error";
 import { NearNetwork } from "./../types";
 import { NanostoreGraphql } from "./graphql";
-import { connect as nearConnect, ConnectedWalletAccount } from "near-api-js";
+// import { connect as nearConnect, ConnectedWalletAccount } from "near-api-js";
 
 export class Nanostore {
     // Public acces to graphQl queries
@@ -46,20 +46,20 @@ export class Nanostore {
    */
   public async getAllStoreActiveListingsTokens( 
     offset: number = 0, 
-limit: number = 10
-): Promise<any>
-{
-  if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
-  
-  try {
-    // TODO: filter on sale tokens only
-    return await this.nanostoreGraphql.getAllStoreActiveListingsTokens(offset,limit);
-  } catch (e) {
-    console.log(e);
-    throw new Error('Graphql error.' + e);
-  }
-  
-}
+    limit: number = 10
+    ): Promise<any>
+    {
+      if(!this.nanostoreGraphql) throw  new Error('Graphql is not defined')
+      
+      try {
+        // TODO: filter on sale tokens only
+        return await this.nanostoreGraphql.getAllStoreActiveListingsTokens(offset,limit);
+      } catch (e) {
+        console.log(e);
+        throw new Error('Graphql error.' + e);
+      }
+      
+    }
 
   /**
    * TODO: check retryFetch logic

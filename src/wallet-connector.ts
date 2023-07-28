@@ -12,9 +12,10 @@ import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet";
 import { setupNarwallets } from "@near-wallet-selector/narwallets";
 import { setupWelldoneWallet } from "@near-wallet-selector/welldone-wallet";
 import { setupNearSnap } from "@near-wallet-selector/near-snap"; */
-import { setupLedger } from "@near-wallet-selector/ledger";
+// import { setupLedger } from "@near-wallet-selector/ledger";
 import { setupWalletConnect } from "@near-wallet-selector/wallet-connect";
-import { filter, from, shareReplay, switchMap, tap } from "rxjs";
+
+import { filter, from, map, shareReplay, switchMap, tap } from "rxjs";
 
 /* import { setupNightlyConnect } from "@near-wallet-selector/nightly-connect";
 import { setupNearFi } from "@near-wallet-selector/nearfi";
@@ -33,7 +34,7 @@ export class WalletConnector {
     private readonly modules = [
         setupNearWallet(),
         setupMyNearWallet(),
-        setupLedger(),
+        // setupLedger(),
     
         /* setupSender(),
         setupHereWallet(),
@@ -65,7 +66,7 @@ export class WalletConnector {
             iconUrl: "https://www.nano-store.app/assets/icons/icon-512x512.png",
         }), */
 
-        setupWalletConnect({
+        /* setupWalletConnect({
             projectId: this.walletConnectProjectId || '',
             metadata: {
               name: "nanoStore App",
@@ -75,7 +76,7 @@ export class WalletConnector {
             },
             chainId: `near:${this.networkName}`,
               iconUrl: "https://www.nano-store.app/assets/icons/icon-512x512.png",
-          }),
+          }), */
         
         /* setupNightlyConnect({
           url: "wss://relay.nightly.app/app",
@@ -92,9 +93,14 @@ export class WalletConnector {
     private selector?: WalletSelector
 
     walletSelectorState$ = this.getWalletStateObservable().pipe(
-        tap(async ()=> {
-            const wallet = await this.selector?.wallet();
-            console.log('wallet',wallet)
+        tap(async (ev)=> {
+            // console.log('getWalletStateObservable',ev)
+            // const wallet = await this.selector?.wallet('my-near-wallet');
+            /* const wallet = await this.selector?.wallet();
+            console.log('wallet',wallet) */
+            // //@ts-ignore
+            // const accounts = await wallet?.signIn({ contractId: this.contractId });
+            // console.log('accounts',accounts)
         }),
         shareReplay(1)
     );
@@ -104,7 +110,6 @@ export class WalletConnector {
         switchMap((state) => from(this.selector!.wallet())),
         shareReplay(1)
     );
-
 
     constructor(
         private networkName: NetworkId | Network,
@@ -144,9 +149,9 @@ export class WalletConnector {
         return this.walletModal;
     }
 
-    public setActiveAccount(accountId: string) {
+    /* public setActiveAccount(accountId: string) {
         this.selector?.setActiveAccount(accountId);
-    }
+    } */
 
     public async signOut(){
         const wallet = await this.selector?.wallet();

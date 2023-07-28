@@ -29,7 +29,6 @@ export async function purchaseToken(
   ) {
     const gas = MAX_GAS;
     const accountId = account?.accountId
-    
 
     if (!account || !accountId) throw cannotMakeOfferError.becauseUserNotFound();
 
@@ -87,32 +86,45 @@ export async function purchaseToken(
    * @param marketplaceHostNearAccount
    */
   export async function deposit_and_set_price(
-    tokenId: string,
+    // tokenId: string,
+    tokenIds: string[] = [],
 	  price: number,
     account: any,// ConnectedWalletAccount,
     contractId: string,
     wallet: any,
-    marketplaceHostNearAccount: string
+    marketplaceHostNearAccount: string,
+  
   ) {
+
+    if(tokenIds.length === 0) {
+      throw new Error('not tokenIds provided')
+    }
+    console.log('price: ', price);
     const priceInNear = utils.format.parseNearAmount(price.toString());
     console.log('priceInNear: ', priceInNear);
 
 	  if(!priceInNear) throw new Error('not price provided');
     
     const args = {};
-    const args2 = {
-      autotransfer: true,
-      token_id: tokenId,
-      account_id: marketplaceHostNearAccount,
-      msg: JSON.stringify({
-        price: priceInNear.toString(),
-        autotransfer: true,
-      })
-    }
     const args_base64 = JsonToUint8Array(args);
-    const args2_base64 = JsonToUint8Array(args2);
 
-    const market_cost = 0.02;
+    const argsInput = []
+
+    for(let tokenId of tokenIds) {
+      const args2 = {
+        autotransfer: true,
+        token_id: tokenId,
+        account_id: marketplaceHostNearAccount,
+        msg: JSON.stringify({
+          price: priceInNear.toString(),
+          autotransfer: true,
+        })
+      }
+      const args2_base64 = JsonToUint8Array(args2)
+      argsInput.push(args2_base64)
+    }
+
+    const market_cost = 0.02 * tokenIds.length;
     const listCost = calculateListCost(1);
     const deposit = utils.format.parseNearAmount(listCost.toString()) ?? '0';
     const market_deposit = utils.format.parseNearAmount(market_cost.toString()) ?? '0';
@@ -135,7 +147,10 @@ export async function purchaseToken(
         blockHash: args_base64,
         encode: () => args_base64
       },
-      {
+      
+    ];
+    for(let args2_base64 of argsInput) {
+      const transaction = {
         functionCalls: [
           {
             args: args2_base64,
@@ -149,10 +164,12 @@ export async function purchaseToken(
         publicKey: account.publicKey.toString(),
         actions: [],
         nonce: toBN(0),
-        blockHash: args_base64,
-        encode: () => args_base64
+        blockHash: args2_base64,
+        encode: () => args2_base64
       }
-    ];
+      transactions.push(transaction)
+    }
+
     try {
       await executeMultipleTransactions({transactions, wallet});
     } catch (error) {
